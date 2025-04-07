@@ -1,13 +1,11 @@
-# Ambiente virtual
-venv/
-
-# Arquivos de log
-*.log
-
-# Arquivos do sistema
+# Ignora pastas de cache do Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 
-# Configurações do Git
+# Ignora ambientes virtuais
+venv/
+.env/
+.venv/
+
+# Ignora arquivo de atributos do Git
 .gitattributes
