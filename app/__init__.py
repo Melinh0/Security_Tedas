@@ -1,27 +1,33 @@
-# app/__init__.py
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from flask_jwt_extended import JWTManager
 from flasgger import Swagger
+from .auth import auth_bp
+from .views import view_bp
+from .controllers import create_default_admin
 
-# Inicializa a instância do banco de dados
+# Declarar db globalmente
 db = SQLAlchemy()
+migrate = Migrate()
+jwt = JWTManager()
 
 def create_app():
     app = Flask(__name__)
-    
-    # Configuração do banco de dados
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'  # Ajuste conforme necessário
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SECRET_KEY'] = 'sua_chave_secreta'  # Defina uma chave secreta
+    app.config.from_object('config.Config')
 
-    # Inicializa o banco de dados com o app
+    # Inicializando db, migrate e jwt
     db.init_app(app)
-    
-    # Inicializa o Swagger
+    migrate.init_app(app, db)
+    jwt.init_app(app)
     Swagger(app)
-    
-    # Importa as rotas
-    from app.routes.routes import register_routes
-    register_routes(app)
-    
+
+    # Registrar Blueprints
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(view_bp)
+
+    with app.app_context():
+        db.create_all()  # Criando as tabelas
+        create_default_admin()
+
     return app

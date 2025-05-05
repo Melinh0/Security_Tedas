@@ -1,5 +1,6 @@
 Flask
-PyJWT
-Werkzeug
-cryptography
+Flask-SQLAlchemy
+Flask-Migrate
+Flask-JWT-Extended
 flasgger
+Werkzeug
