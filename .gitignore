@@ -1,0 +1,11 @@
+# Ignora pastas de cache do Python
+__pycache__/
+*.py[cod]
+
+# Ignora ambientes virtuais
+venv/
+.env/
+.venv/
+
+# Ignora arquivo de atributos do Git
+.gitattributes
