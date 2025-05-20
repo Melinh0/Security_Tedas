@@ -9,3 +9,6 @@ venv/
 
 # Ignora arquivo de atributos do Git
 .gitattributes
+
+# Ignora o banco 
+instance/

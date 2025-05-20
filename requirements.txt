@@ -1,5 +1,10 @@
+#requirements.txt
+Flask-Migrate
 Flask
 PyJWT
 Werkzeug
 cryptography
 flasgger
+Flask-JWT-Extended
+Flask-SQLAlchemy
+psycopg2-binary

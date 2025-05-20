@@ -1,0 +1,74 @@
+swagger: "2.0"
+info:
+  title: Admin API
+  version: "1.0"
+paths:
+  /login:
+    post:
+      tags: [Auth]
+      summary: Login de administrador
+      parameters:
+        - in: body
+          name: credentials
+          schema:
+            type: object
+            properties:
+              username:
+                type: string
+              password:
+                type: string
+          required: true
+      responses:
+        200:
+          description: Token JWT
+  /admins:
+    get:
+      tags: [Admins]
+      summary: Listar todos os admins
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Lista de administradores
+    post:
+      tags: [Admins]
+      summary: Criar novo admin
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: body
+          name: admin
+          schema:
+            type: object
+            properties:
+              username:
+                type: string
+              password:
+                type: string
+      responses:
+        201:
+          description: Admin criado
+  /admins/me:
+    put:
+      tags: [Admins]
+      summary: Atualizar próprio admin
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: body
+          name: admin
+          schema:
+            type: object
+            properties:
+              username:
+                type: string
+              password:
+                type: string
+      responses:
+        200:
+          description: Admin atualizado
+securityDefinitions:
+  BearerAuth:
+    type: apiKey
+    name: Authorization
+    in: header
