@@ -1,8 +1,49 @@
+#app/swagger/admin_swagger.yaml
 swagger: "2.0"
 info:
   title: Admin API
   version: "1.0"
 paths:
+  /forgot-password:
+    post:
+      tags: [Auth]
+      summary: Solicitar recuperação de senha
+      parameters:
+        - in: body
+          name: credentials
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                format: email
+            required: true
+      responses:
+        200:
+          description: Mensagem de confirmação
+
+  /reset-password:
+    post:
+      tags: [Auth]
+      summary: Redefinir senha com token
+      parameters:
+        - in: body
+          name: credentials
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                format: email
+              reset_token:
+                type: string
+              new_password:
+                type: string
+            required: true
+      responses:
+        200:
+          description: Senha redefinida
+
   /login:
     post:
       tags: [Auth]
@@ -15,12 +56,14 @@ paths:
             properties:
               username:
                 type: string
+                description: Pode ser username ou email
               password:
                 type: string
-          required: true
+            required: true
       responses:
         200:
           description: Token JWT
+
   /admins:
     get:
       tags: [Admins]
@@ -33,7 +76,7 @@ paths:
     post:
       tags: [Admins]
       summary: Criar novo admin
-      security:
+      security:  
         - BearerAuth: []
       parameters:
         - in: body
@@ -45,14 +88,22 @@ paths:
                 type: string
               password:
                 type: string
+              email:
+                type: string
+                format: email
+            required:
+              - username
+              - password
+              - email
       responses:
         201:
           description: Admin criado
+
   /admins/me:
     put:
       tags: [Admins]
       summary: Atualizar próprio admin
-      security:
+      security: 
         - BearerAuth: []
       parameters:
         - in: body
@@ -64,9 +115,13 @@ paths:
                 type: string
               password:
                 type: string
+              email:
+                type: string
+                format: email
       responses:
         200:
           description: Admin atualizado
+
 securityDefinitions:
   BearerAuth:
     type: apiKey

@@ -8,3 +8,4 @@ flasgger
 Flask-JWT-Extended
 Flask-SQLAlchemy
 psycopg2-binary
+flask_mail
