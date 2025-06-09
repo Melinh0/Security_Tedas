@@ -1,6 +1,15 @@
-#app/routes.py
 from flask import Blueprint
-from app.controllers.admin_controller import login, get_admins, create_admin, update_admin, forgot_password, reset_password
+from app.controllers.admin_controller import (
+    login, 
+    get_admins, 
+    create_admin,  # Corrigido
+    update_admin, 
+    forgot_password, 
+    reset_password, 
+    get_users, 
+    update_user,
+    create_user  # Nova função
+)
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -22,8 +31,20 @@ def get_admins_route():
 
 @admin_bp.route('/admins', methods=['POST'])
 def create_admin_route():
-    return create_admin()
+    return create_admin()  # Corrigido para criar admin
 
 @admin_bp.route('/admins/me', methods=['PUT'])
 def update_admin_route():
     return update_admin()
+
+@admin_bp.route('/users', methods=['GET'])
+def get_users_route():
+    return get_users()
+
+@admin_bp.route('/users', methods=['POST'])
+def create_user_route():
+    return create_user()  # Nova rota para criar user
+
+@admin_bp.route('/users/me', methods=['PUT'])
+def update_user_route():
+    return update_user()

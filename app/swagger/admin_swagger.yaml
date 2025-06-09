@@ -122,6 +122,66 @@ paths:
         200:
           description: Admin atualizado
 
+  /users:
+    get:
+      tags: [Users]
+      summary: Listar todos os usuários (apenas admin)
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Lista de usuários
+    post:  
+      tags: [Users]
+      summary: Criar novo usuário (apenas admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: body
+          name: user
+          schema:
+            type: object
+            properties:
+              username:
+                type: string
+              password:
+                type: string
+              email:
+                type: string
+                format: email
+            required:
+              - username
+              - password
+              - email
+      responses:
+        201:
+          description: Usuário criado
+        400:
+          description: Dados inválidos ou usuário/email já existe
+
+  /users/me:
+    put:
+      tags: [Users]
+      summary: Atualizar próprio usuário
+      security: 
+        - BearerAuth: []
+      parameters:
+        - in: body
+          name: user
+          schema:
+            type: object
+            properties:
+              username:
+                type: string
+              password:
+                type: string
+              email:
+                type: string
+                format: email
+      responses:
+        200:
+          description: Usuário atualizado
+
 securityDefinitions:
   BearerAuth:
     type: apiKey

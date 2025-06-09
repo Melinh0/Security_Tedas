@@ -101,16 +101,50 @@ def create_admin():
     if not all(field in data for field in required_fields):
         return jsonify({"message": "Email, usuário e senha são obrigatórios"}), 400
     
-    # Criar admin
+    # Verificar se username ou email já existem
+    if Admin.query.filter_by(username=data['username']).first():
+        return jsonify({"message": "Username já está em uso"}), 400
+    if Admin.query.filter_by(email=data['email']).first():
+        return jsonify({"message": "Email já está em uso"}), 400
+    
+    # Criar ADMIN
     new_admin = Admin(
         username=data['username'],
-        email=data['email']  
+        email=data['email'],
+        role='admin'  # Role fixa como admin
     )
     new_admin.set_password(data['password'])
     db.session.add(new_admin)
     db.session.commit()
     
     return jsonify(new_admin.to_dict()), 201
+
+@jwt_required()
+@role_required('admin')
+def create_user():
+    data = request.get_json()
+    
+    required_fields = ['username', 'password', 'email']
+    if not all(field in data for field in required_fields):
+        return jsonify({"message": "Email, usuário e senha são obrigatórios"}), 400
+    
+    # Verificar se username ou email já existem
+    if Admin.query.filter_by(username=data['username']).first():
+        return jsonify({"message": "Username já está em uso"}), 400
+    if Admin.query.filter_by(email=data['email']).first():
+        return jsonify({"message": "Email já está em uso"}), 400
+    
+    # Criar USER
+    new_user = Admin(
+        username=data['username'],
+        email=data['email'],
+        role='user'  # Role fixa como user
+    )
+    new_user.set_password(data['password'])
+    db.session.add(new_user)
+    db.session.commit()
+    
+    return jsonify(new_user.to_dict()), 201
 
 @jwt_required()
 @role_required('admin')
@@ -132,3 +166,34 @@ def update_admin():
     
     db.session.commit()
     return jsonify(admin.to_dict()), 200
+
+@jwt_required()
+@role_required('admin')
+def get_users():
+    users = Admin.query.filter_by(role='user').all()
+    return jsonify([user.to_dict() for user in users]), 200
+
+@jwt_required()
+def update_user():
+    current_user_id = int(get_jwt_identity())
+    user = Admin.query.get(current_user_id)
+    
+    # Verificar se é um user (ou admin atualizando próprio perfil)
+    if user.role != 'user' and user.role != 'admin':
+        return jsonify({"message": "Acesso negado"}), 403
+        
+    data = request.get_json()
+    
+    if 'email' in data:
+        if Admin.query.filter(Admin.email == data['email'], Admin.id != current_user_id).first():
+            return jsonify({"message": "Email já está em uso"}), 400
+        user.email = data['email']
+    
+    if 'username' in data:
+        user.username = data['username']
+    
+    if 'password' in data:
+        user.set_password(data['password'])
+    
+    db.session.commit()
+    return jsonify(user.to_dict()), 200

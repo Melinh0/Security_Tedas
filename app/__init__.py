@@ -31,16 +31,28 @@ def create_app():
     # Cria as tabelas e usuário admin padrão
     with app.app_context():
         db.create_all()
-    
+        
+        # Criar admin padrão se não existir
         if not Admin.query.filter_by(username='admin').first():
             default_admin = Admin(
                 username='admin',
-                email='admin@example.com',  
+                email='admin@example.com',
                 role='admin'
             )
             default_admin.set_password('admin')
             db.session.add(default_admin)
-            db.session.commit()
+        
+        # Criar user padrão se não existir
+        if not Admin.query.filter_by(username='user').first():
+            default_user = Admin(
+                username='user',
+                email='user@example.com',
+                role='user'
+            )
+            default_user.set_password('user')
+            db.session.add(default_user)
+        
+        db.session.commit()
     
     # Registra blueprints
     from app.routes import admin_bp
