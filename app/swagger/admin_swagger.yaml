@@ -182,6 +182,28 @@ paths:
         200:
           description: Usuário atualizado
 
+  /users/me/upload:
+      post:
+        tags: [Users]
+        summary: Upload de arquivo 
+        security:
+          - BearerAuth: []
+        consumes:
+          - multipart/form-data
+        parameters:
+          - in: formData
+            name: file
+            type: file
+            required: true
+            description: Arquivo a ser enviado
+        responses:
+          201:
+            description: Sucesso no upload
+          400:
+            description: Erro de validação ou sem arquivo
+          500:
+            description: Erro interno ao salvar
+
 securityDefinitions:
   BearerAuth:
     type: apiKey

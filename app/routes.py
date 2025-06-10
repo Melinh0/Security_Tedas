@@ -1,14 +1,16 @@
+#app/routes.py
 from flask import Blueprint
 from app.controllers.admin_controller import (
     login, 
     get_admins, 
-    create_admin,  # Corrigido
+    create_admin,  
     update_admin, 
     forgot_password, 
     reset_password, 
     get_users, 
     update_user,
-    create_user  # Nova função
+    create_user, 
+    upload_file 
 )
 
 admin_bp = Blueprint('admin', __name__)
@@ -48,3 +50,7 @@ def create_user_route():
 @admin_bp.route('/users/me', methods=['PUT'])
 def update_user_route():
     return update_user()
+
+@admin_bp.route('/users/me/upload', methods=['POST'], endpoint='upload_file_route')
+def upload_file_route():
+    return upload_file()

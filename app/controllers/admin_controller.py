@@ -13,6 +13,9 @@ from app import jwt
 from app import mail
 from datetime import datetime, timedelta
 import secrets
+import os
+from flask import jsonify, request, current_app
+from werkzeug.utils import secure_filename
 
 def login():
     data = request.get_json()
@@ -197,3 +200,41 @@ def update_user():
     
     db.session.commit()
     return jsonify(user.to_dict()), 200
+
+@jwt_required()
+@role_required('user')
+def upload_file():
+    """
+    Endpoint para upload de arquivo por usuários (role='user').
+    Recebe multipart/form-data com campo 'file' e salva em UPLOAD_FOLDER.
+    """
+    if 'file' not in request.files:
+        return jsonify({"message": "Nenhum arquivo enviado"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"message": "Nome de arquivo vazio"}), 400
+
+    # opcional: verificar extensão permitida
+    allowed = current_app.config['ALLOWED_EXTENSIONS']
+    filename = secure_filename(file.filename)
+    if allowed is not None:
+        ext = filename.rsplit('.', 1)[-1].lower()
+        if ext not in allowed:
+            return jsonify({"message": f"Extensão .{ext} não permitida"}), 400
+
+    upload_folder = current_app.config['UPLOAD_FOLDER']
+    # garante que a pasta exista
+    os.makedirs(upload_folder, exist_ok=True)
+
+    save_path = os.path.join(upload_folder, filename)
+    try:
+        file.save(save_path)
+    except Exception as e:
+        return jsonify({"message": f"Erro ao salvar arquivo: {str(e)}"}), 500
+
+    return jsonify({
+        "message": "Arquivo enviado com sucesso",
+        "filename": filename,
+        "path": save_path  # ou retornar apenas filename, conforme sua necessidade
+    }), 201

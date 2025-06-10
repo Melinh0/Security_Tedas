@@ -51,7 +51,7 @@ def create_app():
             )
             default_user.set_password('user')
             db.session.add(default_user)
-        
+            
         db.session.commit()
     
     # Registra blueprints
