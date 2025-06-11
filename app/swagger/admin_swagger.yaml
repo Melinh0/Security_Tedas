@@ -204,6 +204,34 @@ paths:
           500:
             description: Erro interno ao salvar
 
+  /logs:
+      get:
+        tags: [Logs]
+        summary: Listar logs do sistema (apenas admin)
+        security:
+          - BearerAuth: []
+        responses:
+          200:
+            description: Lista de logs do sistema
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  usuario_id:
+                    type: integer
+                  acao:
+                    type: string
+                  data_hora:
+                    type: string
+                    format: date-time
+                  username:
+                    type: string
+                  email:
+                    type: string
+
 securityDefinitions:
   BearerAuth:
     type: apiKey

@@ -13,8 +13,9 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object('app.config.Config')
     
-    # Importar modelos ANTES de criar o banco
+    # Importar modelos
     from app.models.admin import Admin
+    from app.models.log import Log  # Novo modelo
     from app.controllers.admin_controller import user_lookup_callback
     
     # Inicializa extensões
@@ -28,7 +29,7 @@ def create_app():
     # Configuração do Swagger
     Swagger(app, template_file='swagger/admin_swagger.yaml')
     
-    # Cria as tabelas e usuário admin padrão
+    # Cria as tabelas e usuários padrão
     with app.app_context():
         db.create_all()
         

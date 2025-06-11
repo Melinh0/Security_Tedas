@@ -10,7 +10,8 @@ from app.controllers.admin_controller import (
     get_users, 
     update_user,
     create_user, 
-    upload_file 
+    upload_file,
+    get_logs  # Nova função
 )
 
 admin_bp = Blueprint('admin', __name__)
@@ -33,7 +34,7 @@ def get_admins_route():
 
 @admin_bp.route('/admins', methods=['POST'])
 def create_admin_route():
-    return create_admin()  # Corrigido para criar admin
+    return create_admin()
 
 @admin_bp.route('/admins/me', methods=['PUT'])
 def update_admin_route():
@@ -45,12 +46,17 @@ def get_users_route():
 
 @admin_bp.route('/users', methods=['POST'])
 def create_user_route():
-    return create_user()  # Nova rota para criar user
+    return create_user()
 
 @admin_bp.route('/users/me', methods=['PUT'])
 def update_user_route():
     return update_user()
 
-@admin_bp.route('/users/me/upload', methods=['POST'], endpoint='upload_file_route')
+@admin_bp.route('/users/me/upload', methods=['POST'])
 def upload_file_route():
     return upload_file()
+
+# Nova rota para logs
+@admin_bp.route('/logs', methods=['GET'])
+def get_logs_route():
+    return get_logs()
