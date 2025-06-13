@@ -272,3 +272,45 @@ def upload_file():
 def get_logs():
     logs = Log.query.order_by(Log.data_hora.desc()).all()
     return jsonify([log.to_dict() for log in logs]), 200
+
+@jwt_required()
+@role_required('admin')
+def delete_admin(admin_id):
+    current_admin_id = int(get_jwt_identity())
+    
+    # Não permitir que um admin se delete
+    if current_admin_id == admin_id:
+        return jsonify({"message": "Você não pode deletar a si mesmo"}), 400
+    
+    admin = Admin.query.get(admin_id)
+    if not admin:
+        return jsonify({"message": "Admin não encontrado"}), 404
+    
+    # Proteger o admin padrão
+    if admin.username == 'admin':
+        return jsonify({"message": "Não é permitido deletar o admin padrão"}), 400
+    
+    db.session.delete(admin)
+    db.session.commit()
+    
+    registrar_log(current_admin_id, f'DELETE_ADMIN:{admin_id}')
+    return jsonify({"message": "Admin deletado com sucesso"}), 200
+
+@jwt_required()
+@role_required('admin')
+def delete_user(user_id):
+    current_admin_id = int(get_jwt_identity())
+    
+    user = Admin.query.get(user_id)
+    if not user:
+        return jsonify({"message": "Usuário não encontrado"}), 404
+    
+    # Proteger o usuário padrão
+    if user.username == 'user':
+        return jsonify({"message": "Não é permitido deletar o usuário padrão"}), 400
+    
+    db.session.delete(user)
+    db.session.commit()
+    
+    registrar_log(current_admin_id, f'DELETE_USER:{user_id}')
+    return jsonify({"message": "Usuário deletado com sucesso"}), 200

@@ -122,6 +122,46 @@ paths:
         200:
           description: Admin atualizado
 
+  /admins/{admin_id}:
+    delete:
+      tags: [Admins]
+      summary: Deletar um admin (apenas admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: admin_id
+          in: path
+          type: integer
+          required: true
+          description: ID do admin a ser deletado
+      responses:
+        200:
+          description: Admin deletado
+        400:
+          description: Não é permitido deletar a si mesmo ou o admin padrão
+        404:
+          description: Admin não encontrado
+
+  /users/{user_id}:
+    delete:
+      tags: [Users]
+      summary: Deletar um usuário (apenas admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          type: integer
+          required: true
+          description: ID do usuário a ser deletado
+      responses:
+        200:
+          description: Usuário deletado
+        400:
+          description: Não é permitido deletar o usuário padrão
+        404:
+          description: Usuário não encontrado
+
   /users:
     get:
       tags: [Users]
