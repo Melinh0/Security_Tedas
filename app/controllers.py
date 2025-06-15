@@ -1,9 +1,12 @@
+#controllers.py
 from .models import User
-from .__init__ import db
+from . import db
 
 def create_default_admin():
     if not User.query.filter_by(username='yago').first():
-        admin = User(username='yago', role='admin')
-        admin.set_password('123')
-        db.session.add(admin)
+        user = User(username="yago")
+        user.set_password("admin")
+        db.session.add(user)
+        db.session.commit()       
+        db.session.add(user)
         db.session.commit()
