@@ -272,6 +272,32 @@ paths:
                   email:
                     type: string
 
+  /files:
+      get:
+        tags: [Files]
+        summary: Listar arquivos enviados
+        security:
+          - BearerAuth: []
+        responses:
+          200:
+            description: Lista de arquivos
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  user_id:
+                    type: integer
+                    description: ID do usuário dono do arquivo
+                  name:
+                    type: string
+                  size:
+                    type: integer
+                  modified:
+                    type: number
+                  type:
+                    type: string
+
 securityDefinitions:
   BearerAuth:
     type: apiKey

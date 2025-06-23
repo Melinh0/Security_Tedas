@@ -6,7 +6,7 @@ from app.models.admin import Admin
 class Log(db.Model):
     __tablename__ = 'logs'
     id = db.Column(db.Integer, primary_key=True)
-    usuario_id = db.Column(db.Integer, nullable=False)  # Removida a FK para permitir histórico
+    usuario_id = db.Column(db.Integer, nullable=False)  
     acao = db.Column(db.String(50), nullable=False)
     data_hora = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     

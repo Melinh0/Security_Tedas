@@ -108,7 +108,11 @@ def user_lookup_callback(_jwt_header, jwt_data):
 @jwt_required()
 @role_required('admin')
 def get_admins():
+    current_admin_id = int(get_jwt_identity())
     admins = Admin.query.all()
+    
+    registrar_log(current_admin_id, 'LISTAR_ADMINS')
+    
     return jsonify([admin.to_dict() for admin in admins]), 200
 
 @jwt_required()
@@ -197,10 +201,15 @@ def update_admin():
 @jwt_required()
 @role_required('admin')
 def get_users():
+    current_admin_id = int(get_jwt_identity())
     users = Admin.query.filter_by(role='user').all()
+    
+    registrar_log(current_admin_id, 'LISTAR_USERS')
+    
     return jsonify([user.to_dict() for user in users]), 200
 
 @jwt_required()
+@role_required('user')
 def update_user():
     current_user_id = int(get_jwt_identity())
     user = Admin.query.get(current_user_id)
@@ -249,9 +258,12 @@ def upload_file():
             return jsonify({"message": f"Extensão .{ext} não permitida"}), 400
 
     upload_folder = current_app.config['UPLOAD_FOLDER']
-    os.makedirs(upload_folder, exist_ok=True)
+    
+    # Criar subpasta para o usuário
+    user_folder = os.path.join(upload_folder, str(current_user_id))
+    os.makedirs(user_folder, exist_ok=True)
 
-    save_path = os.path.join(upload_folder, filename)
+    save_path = os.path.join(user_folder, filename)
     try:
         file.save(save_path)
     except Exception as e:
@@ -314,3 +326,57 @@ def delete_user(user_id):
     
     registrar_log(current_admin_id, f'DELETE_USER:{user_id}')
     return jsonify({"message": "Usuário deletado com sucesso"}), 200
+
+@jwt_required()
+def list_files():
+    current_user_id = int(get_jwt_identity())
+    user = Admin.query.get(current_user_id)
+    
+    upload_folder = current_app.config['UPLOAD_FOLDER']
+    
+    # Verificar se a pasta de uploads existe
+    if not os.path.exists(upload_folder):
+        return jsonify({"message": "Pasta de uploads não existe"}), 404
+    
+    files = []
+    
+    # Se for admin, listar todos os arquivos
+    if user.role == 'admin':
+        # Percorrer todas as pastas de usuários
+        for user_id in os.listdir(upload_folder):
+            user_folder = os.path.join(upload_folder, user_id)
+            if os.path.isdir(user_folder):
+                for filename in os.listdir(user_folder):
+                    filepath = os.path.join(user_folder, filename)
+                    if os.path.isfile(filepath):
+                        file_info = {
+                            'user_id': int(user_id),
+                            'name': filename,
+                            'size': os.path.getsize(filepath),
+                            'modified': os.path.getmtime(filepath),
+                            'type': filename.split('.')[-1].lower() if '.' in filename else 'unknown'
+                        }
+                        files.append(file_info)
+    # Se for user, listar apenas seus arquivos
+    else:
+        user_folder = os.path.join(upload_folder, str(current_user_id))
+        if os.path.exists(user_folder):
+            for filename in os.listdir(user_folder):
+                filepath = os.path.join(user_folder, filename)
+                if os.path.isfile(filepath):
+                    file_info = {
+                        'user_id': current_user_id,
+                        'name': filename,
+                        'size': os.path.getsize(filepath),
+                        'modified': os.path.getmtime(filepath),
+                        'type': filename.split('.')[-1].lower() if '.' in filename else 'unknown'
+                    }
+                    files.append(file_info)
+    
+    # Registrar log
+    if user.role == 'admin':
+        registrar_log(current_user_id, 'LISTAR_ARQUIVOS_ADMIN')
+    else:
+        registrar_log(current_user_id, 'LISTAR_ARQUIVOS_USER')
+    
+    return jsonify(files), 200
