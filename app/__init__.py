@@ -16,7 +16,7 @@ def create_app():
     # Importar modelos
     from app.models.admin import Admin
     from app.models.log import Log  
-    from app.controllers.admin_controller import user_lookup_callback
+    from app.controllers.auth_controller import user_lookup_callback
     
     # Inicializa extensões
     db.init_app(app)
