@@ -1,23 +1,30 @@
+#api/serializers.py
 from rest_framework import serializers
 from .models import CustomUser, Log, UploadedFile
-from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
         data['role'] = self.user.role
+        data['user_id'] = self.user.id
+        data['swagger_redirect'] = f"/swagger/?token={data['access']}"
         return data
 
 class UserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True)  
+    
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'role']
+        fields = ['id', 'username', 'email', 'role', 'password'] 
         extra_kwargs = {'password': {'write_only': True}}
     
     def create(self, validated_data):
-        validated_data['password'] = make_password(validated_data['password'])
-        return super().create(validated_data)
+        password = validated_data.pop('password')
+        user = super().create(validated_data)
+        user.set_password(password)
+        user.save()
+        return user
 
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()

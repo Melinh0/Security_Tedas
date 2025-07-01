@@ -1,3 +1,4 @@
+#api/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, generics, permissions
@@ -16,7 +17,6 @@ from .serializers import (
 )
 from .permissions import RoleRequired
 from django.shortcuts import get_object_or_404
-from django.core.files.storage import FileSystemStorage
 import os
 from django.core.exceptions import ValidationError
 
@@ -131,11 +131,24 @@ class AdminListView(generics.ListCreateAPIView):
         return User.objects.filter(role='admin')
     
     def create(self, request, *args, **kwargs):
-        response = super().create(request, *args, **kwargs)
-        if response.status_code == status.HTTP_201_CREATED:
-            admin_id = response.data['id']
-            Log.create_log(request.user, f'CRIAR_ADMIN:{admin_id}')
-        return response
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Crie o usuário usando o UserManager
+        user = User.objects.create_user(
+            username=serializer.validated_data['username'],
+            email=serializer.validated_data['email'],
+            password=serializer.validated_data['password'],
+            role='admin'
+        )
+        
+        # Agora temos um ID válido para registrar no log
+        Log.create_log(request.user, f'CRIAR_ADMIN:{user.id}')
+        
+        # Serialize a resposta
+        response_serializer = UserSerializer(user)
+        headers = self.get_success_headers(response_serializer.data)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 class AdminDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UserSerializer

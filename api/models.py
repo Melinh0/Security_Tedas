@@ -1,3 +1,4 @@
+#app/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
@@ -7,31 +8,32 @@ from django.conf import settings
 import os
 
 class UserManager(BaseUserManager):
-    def create_user(self, username, email, password=None, role='user'):
+    def create_user(self, username, email, password=None, **extra_fields):
         if not email:
             raise ValueError('Users must have an email address')
         
-        user = self.model(
-            username=username,
-            email=self.normalize_email(email),
-            role=role
-        )
+        email = self.normalize_email(email)
+        user = self.model(username=username, email=email, **extra_fields)
         
-        user.set_password(password)
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
+        
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, username, email, password):
-        user = self.create_user(
+    def create_superuser(self, username, email, password, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('role', 'admin')
+        
+        return self.create_user(
             username=username,
             email=email,
             password=password,
-            role='admin'
+            **extra_fields
         )
-        user.is_staff = True
-        user.is_superuser = True
-        user.save(using=self._db)
-        return user
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = (
@@ -39,6 +41,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ('user', 'User'),
     )
     
+    id = models.PositiveIntegerField(primary_key=True)
     username = models.CharField(max_length=80, unique=True)
     email = models.EmailField(max_length=120, unique=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
@@ -115,3 +118,4 @@ class UploadedFile(models.Model):
     
     def filename(self):
         return os.path.basename(self.file.name)
+    

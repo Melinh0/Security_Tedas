@@ -1,3 +1,4 @@
+#api/apps.py
 from django.apps import AppConfig
 from django.db.utils import ProgrammingError, OperationalError
 import logging
@@ -7,11 +8,10 @@ logger = logging.getLogger(__name__)
 class ApiConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'api'
-    _users_created = False
     
     def ready(self):
-        if not self._users_created:
-            self._create_default_users()
+        # Não criar usuários aqui - usar comando personalizado
+        pass
     
     def _create_default_users(self):
         """Cria usuários padrão de forma segura"""

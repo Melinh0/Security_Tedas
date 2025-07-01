@@ -1,0 +1,30 @@
+<!-- templates/swagger_redirect.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Redirecting to Swagger</title>
+    <script>
+        window.onload = function() {
+            const token = "{{ token }}";
+            if (token) {
+                // Armazena o token no localStorage para uso futuro
+                localStorage.setItem('swagger_token', token);
+                
+                // Configura o token no Swagger UI
+                const authDefinition = 'Bearer';
+                const apiKey = 'Bearer ' + token;
+                
+                if (window.ui) {
+                    window.ui.preauthorizeApiKey(authDefinition, apiKey);
+                }
+            }
+            
+            // Redireciona para o Swagger
+            window.location.href = "{% url 'schema-swagger-ui' %}";
+        };
+    </script>
+</head>
+<body>
+    <p>Redirecting to Swagger UI...</p>
+</body>
+</html>

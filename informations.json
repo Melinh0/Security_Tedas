@@ -1,0 +1,14 @@
+[
+{
+  "username": "yago",
+  "email": "yago.costa@aluno.uece.br",
+  "role": "admin",
+  "password": "123"
+},
+{
+  "username": "carlos",
+  "email": "yagomelo20022109@gmail.com",
+  "role": "admin",
+  "password": "456"
+}
+]
