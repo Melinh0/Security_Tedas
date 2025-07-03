@@ -2,29 +2,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Redirecting to Swagger</title>
+    <title>Swagger Redirect</title>
     <script>
-        window.onload = function() {
-            const token = "{{ token }}";
-            if (token) {
-                // Armazena o token no localStorage para uso futuro
-                localStorage.setItem('swagger_token', token);
-                
-                // Configura o token no Swagger UI
-                const authDefinition = 'Bearer';
-                const apiKey = 'Bearer ' + token;
-                
-                if (window.ui) {
-                    window.ui.preauthorizeApiKey(authDefinition, apiKey);
-                }
-            }
-            
-            // Redireciona para o Swagger
-            window.location.href = "{% url 'schema-swagger-ui' %}";
-        };
+        // Extrai o token da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        
+        if (token) {
+            // Redireciona para o Swagger com o token no header
+            window.location.href = `/swagger/?token=${token}`;
+        } else {
+            // Redireciona para o Swagger normal
+            window.location.href = '/swagger/';
+        }
     </script>
 </head>
 <body>
-    <p>Redirecting to Swagger UI...</p>
+    <p>Redirecionando para o Swagger...</p>
 </body>
 </html>

@@ -13,7 +13,16 @@ class UserManager(BaseUserManager):
             raise ValueError('Users must have an email address')
         
         email = self.normalize_email(email)
-        user = self.model(username=username, email=email, **extra_fields)
+        
+        extra_fields.setdefault('role', 'user')
+        extra_fields.setdefault('is_staff', False)
+        extra_fields.setdefault('is_superuser', False)
+        
+        user = self.model(
+            username=username,
+            email=email,
+            **extra_fields
+        )
         
         if password:
             user.set_password(password)
@@ -24,16 +33,11 @@ class UserManager(BaseUserManager):
         return user
 
     def create_superuser(self, username, email, password, **extra_fields):
+        extra_fields.setdefault('role', 'admin')  
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('role', 'admin')
         
-        return self.create_user(
-            username=username,
-            email=email,
-            password=password,
-            **extra_fields
-        )
+        return self.create_user(username, email, password, **extra_fields)
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = (
@@ -41,7 +45,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ('user', 'User'),
     )
     
-    id = models.PositiveIntegerField(primary_key=True)
     username = models.CharField(max_length=80, unique=True)
     email = models.EmailField(max_length=120, unique=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')

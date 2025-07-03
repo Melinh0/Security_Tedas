@@ -1,58 +1,39 @@
-#api/apps.py
 from django.apps import AppConfig
-from django.db.utils import ProgrammingError, OperationalError
+from django.db.models.signals import post_migrate
 import logging
 
 logger = logging.getLogger(__name__)
+
+def create_default_users(sender, **kwargs):
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    
+    try:
+        # Cria admin se não existir
+        if not User.objects.filter(username='admin').exists():
+            admin = User.objects.create_superuser(
+                username='admin',
+                email='admin@example.com',
+                password='admin'
+            )
+            logger.info(f"Admin user created: {admin.username}")
+        
+        # Cria user regular se não existir
+        if not User.objects.filter(username='user').exists():
+            user = User.objects.create_user(
+                username='user',
+                email='user@example.com',
+                password='user',
+                role='user'
+            )
+            logger.info(f"Regular user created: {user.username}")
+    except Exception as e:
+        logger.error(f"Error creating default users: {e}")
 
 class ApiConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'api'
     
     def ready(self):
-        # Não criar usuários aqui - usar comando personalizado
-        pass
-    
-    def _create_default_users(self):
-        """Cria usuários padrão de forma segura"""
-        try:
-            from django.contrib.auth import get_user_model
-            User = get_user_model()
-            
-            # Verifica se a tabela existe
-            if not self._table_exists(User._meta.db_table):
-                return
-                
-            self._create_admin_user(User)
-            self._create_regular_user(User)
-            
-            self._users_created = True
-            
-        except (ProgrammingError, OperationalError) as e:
-            logger.debug(f"Database not ready: {e}")
-        except Exception as e:
-            logger.error(f"Error creating default users: {e}")
-
-    def _table_exists(self, table_name):
-        from django.db import connection
-        return table_name in connection.introspection.table_names()
-    
-    def _create_admin_user(self, User):
-        if not User.objects.filter(username='admin').exists():
-            User.objects.create_superuser(
-                username='admin',
-                email='admin@example.com',
-                password='admin',
-                role='admin'
-            )
-            logger.info("Admin user created")
-    
-    def _create_regular_user(self, User):
-        if not User.objects.filter(username='user').exists():
-            User.objects.create_user(
-                username='user',
-                email='user@example.com',
-                password='user',
-                role='user'
-            )
-            logger.info("Regular user created")
+        # Registra o sinal para criar usuários após migrações
+        post_migrate.connect(create_default_users, sender=self)

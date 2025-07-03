@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, generics, permissions
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.parsers import MultiPartParser
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.utils import timezone
@@ -193,17 +194,43 @@ class LogListView(generics.ListAPIView):
         return Log.objects.all().order_by('-timestamp')
 
 class FileUploadView(APIView):
-    serializer_class = FileUploadSerializer
+    """
+    Endpoint para upload de arquivos
+    
+    ---
+    # YAML (para documentação Swagger)
+    consumes:
+      - multipart/form-data
+    parameters:
+      - name: file
+        in: formData
+        type: file
+        required: true
+        description: Arquivo a ser enviado
+    responses:
+      201:
+        description: Arquivo enviado com sucesso
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            filename:
+              type: string
+            path:
+              type: string
+    """
+    parser_classes = [MultiPartParser]
     permission_classes = [permissions.IsAuthenticated]
     
     def post(self, request):
-        if 'file' not in request.FILES:
-            return Response({"message": "Nenhum arquivo enviado"}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = FileUploadSerializer(data=request.data)
         
-        file = request.FILES['file']
-        if not file.name:
-            return Response({"message": "Nome de arquivo vazio"}, status=status.HTTP_400_BAD_REQUEST)
-
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        file = serializer.validated_data['file']
+        
         # Verificar extensões permitidas
         if settings.ALLOWED_EXTENSIONS:
             ext = os.path.splitext(file.name)[1].lower().lstrip('.')
@@ -212,6 +239,7 @@ class FileUploadView(APIView):
         
         # Salvar o arquivo
         uploaded_file = UploadedFile(user=request.user, file=file)
+        
         try:
             uploaded_file.full_clean()
             uploaded_file.save()
@@ -226,7 +254,7 @@ class FileUploadView(APIView):
             "filename": file.name,
             "path": uploaded_file.file.path
         }, status=status.HTTP_201_CREATED)
-
+    
 class FileListView(generics.ListAPIView):
     serializer_class = FileListSerializer
     permission_classes = [permissions.IsAuthenticated]

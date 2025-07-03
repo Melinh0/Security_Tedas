@@ -1,4 +1,5 @@
-[
+Caso eu esqueça
+
 {
   "username": "yago",
   "email": "yago.costa@aluno.uece.br",
@@ -11,4 +12,9 @@
   "role": "admin",
   "password": "456"
 }
-]
+
+rm db.sqlite3
+rm -rf api/migrations
+python manage.py makemigrations api
+python manage.py migrate
+

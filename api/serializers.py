@@ -50,11 +50,12 @@ class LogSerializer(serializers.ModelSerializer):
     def get_email(self, obj):
         return obj.user.email if obj.user else ""
 
-class FileUploadSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UploadedFile
-        fields = ['id', 'file', 'uploaded_at']
-        read_only_fields = ['user', 'uploaded_at']
+class FileUploadSerializer(serializers.Serializer):
+    file = serializers.FileField(
+        required=True,
+        help_text="Arquivo a ser enviado",
+        style={'base_template': 'file.html', 'input_type': 'file'}
+    )
 
 class FileListSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(source='user.id')
