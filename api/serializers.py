@@ -7,7 +7,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
         data['role'] = self.user.role
-        data['user_id'] = self.user.id
         data['swagger_redirect'] = f"/swagger/?token={data['access']}"
         return data
 

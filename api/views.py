@@ -20,6 +20,8 @@ from .permissions import RoleRequired
 from django.shortcuts import get_object_or_404
 import os
 from django.core.exceptions import ValidationError
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 
 User = get_user_model()
 
@@ -194,36 +196,39 @@ class LogListView(generics.ListAPIView):
         return Log.objects.all().order_by('-timestamp')
 
 class FileUploadView(APIView):
-    """
-    Endpoint para upload de arquivos
-    
-    ---
-    # YAML (para documentação Swagger)
-    consumes:
-      - multipart/form-data
-    parameters:
-      - name: file
-        in: formData
-        type: file
-        required: true
-        description: Arquivo a ser enviado
-    responses:
-      201:
-        description: Arquivo enviado com sucesso
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-            filename:
-              type: string
-            path:
-              type: string
-    """
     parser_classes = [MultiPartParser]
     permission_classes = [permissions.IsAuthenticated]
     
+    @swagger_auto_schema(
+        operation_description="Upload de arquivo",
+        manual_parameters=[
+            openapi.Parameter(
+                name='file',
+                in_=openapi.IN_FORM,
+                type=openapi.TYPE_FILE,
+                required=True,
+                description="Arquivo a ser enviado"
+            )
+        ],
+        responses={
+            201: openapi.Response(
+                description="Sucesso no upload",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'message': openapi.Schema(type=openapi.TYPE_STRING),
+                        'filename': openapi.Schema(type=openapi.TYPE_STRING),
+                        'path': openapi.Schema(type=openapi.TYPE_STRING),
+                    }
+                )
+            ),
+            400: "Erro de validação ou sem arquivo",
+            500: "Erro interno ao salvar"
+        },
+        security=[{'Bearer': []}]
+    )
     def post(self, request):
+        # O código existente permanece o mesmo
         serializer = FileUploadSerializer(data=request.data)
         
         if not serializer.is_valid():
