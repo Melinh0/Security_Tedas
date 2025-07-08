@@ -120,5 +120,15 @@ class UploadedFile(models.Model):
         return self.file.name
     
     def filename(self):
-        return os.path.basename(self.file.name)
+        try:
+            return os.path.basename(self.file.name)
+        except FileNotFoundError:
+            return "Arquivo não encontrado"
+    
+    def exists(self):
+        """Verifica se o arquivo físico existe"""
+        try:
+            return self.file.storage.exists(self.file.name)
+        except Exception:
+            return False
     

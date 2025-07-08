@@ -11,12 +11,31 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 
 class UserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True)  
+    password = serializers.CharField(
+        write_only=True,
+        required=True,
+        style={'input_type': 'password'},
+        help_text="Senha do usuário (mínimo 8 caracteres)"
+    )
     
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'role', 'password'] 
-        extra_kwargs = {'password': {'write_only': True}}
+        fields = ['id', 'username', 'email', 'role', 'password']
+        extra_kwargs = {
+            'username': {
+                'help_text': "Nome de usuário único para login"
+            },
+            'email': {
+                'help_text': "Endereço de email válido"
+            },
+            'password': {
+                'write_only': True,
+                'style': {'input_type': 'password'}
+            },
+            'role': {
+                'help_text': "Papel do usuário (admin ou user)"
+            }
+        }
     
     def create(self, validated_data):
         password = validated_data.pop('password')
@@ -26,9 +45,18 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 class PasswordResetSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    reset_token = serializers.CharField(required=False)
-    new_password = serializers.CharField(required=False)
+    email = serializers.EmailField(
+        help_text="Email do usuário para redefinição de senha"
+    )
+    reset_token = serializers.CharField(
+        required=False,
+        help_text="Token de redefinição recebido por email"
+    )
+    new_password = serializers.CharField(
+        required=False,
+        style={'input_type': 'password'},
+        help_text="Nova senha (mínimo 8 caracteres)"
+    )
     
     def validate_email(self, value):
         if not CustomUser.objects.filter(email=value).exists():
@@ -42,6 +70,20 @@ class LogSerializer(serializers.ModelSerializer):
     class Meta:
         model = Log
         fields = ['id', 'user', 'action', 'timestamp', 'username', 'email']
+        extra_kwargs = {
+            'action': {
+                'help_text': "Ação registrada no log (ex: LOGIN, UPLOAD, RESET_SENHA)"
+            },
+            'timestamp': {
+                'help_text': "Data e hora do registro no formato ISO 8601"
+            },
+            'username': {
+                'help_text': "Nome do usuário que realizou a ação"
+            },
+            'email': {
+                'help_text': "Email do usuário que realizou a ação"
+            }
+        }
     
     def get_username(self, obj):
         return obj.user.username if obj.user else "Usuário deletado"
@@ -62,20 +104,40 @@ class FileListSerializer(serializers.ModelSerializer):
     size = serializers.SerializerMethodField()
     modified = serializers.SerializerMethodField()
     type = serializers.SerializerMethodField()
+    exists = serializers.SerializerMethodField()  # Novo campo para verificar existência
     
     class Meta:
         model = UploadedFile
-        fields = ['user_id', 'name', 'size', 'modified', 'type']
+        fields = ['user_id', 'name', 'size', 'modified', 'type', 'exists']
+        extra_kwargs = {
+            'name': {'help_text': "Nome do arquivo"},
+            'size': {'help_text': "Tamanho do arquivo em bytes"},
+            'modified': {'help_text': "Data de modificação em timestamp Unix"},
+            'type': {'help_text': "Extensão do arquivo"},
+            'exists': {'help_text': "Indica se o arquivo físico existe"}
+        }
     
     def get_name(self, obj):
         return obj.filename()
     
     def get_size(self, obj):
-        return obj.file.size
+        try:
+            return obj.file.size
+        except (FileNotFoundError, OSError):
+            return 0  # Retorna 0 se o arquivo não existir
     
     def get_modified(self, obj):
-        return obj.uploaded_at.timestamp()
+        try:
+            return obj.uploaded_at.timestamp()
+        except (FileNotFoundError, OSError):
+            return None
     
     def get_type(self, obj):
-        name = obj.filename()
-        return name.split('.')[-1].lower() if '.' in name else 'unknown'
+        try:
+            name = obj.filename()
+            return name.split('.')[-1].lower() if '.' in name else 'unknown'
+        except (FileNotFoundError, OSError):
+            return 'deleted'
+    
+    def get_exists(self, obj):
+        return obj.exists()  # Usa o método que criamos no modelo

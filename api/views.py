@@ -19,6 +19,9 @@ from .serializers import (
 from .permissions import RoleRequired
 from django.shortcuts import get_object_or_404
 import os
+import magic
+import tempfile
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.exceptions import ValidationError
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -28,6 +31,17 @@ User = get_user_model()
 class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
     
+    @swagger_auto_schema(
+        operation_summary="Autenticar usuário",
+        operation_description="Autentica um usuário com base nas credenciais fornecidas e retorna tokens de acesso.",
+        responses={
+            200: openapi.Response(
+                description="Autenticação bem-sucedida",
+                schema=CustomTokenObtainPairSerializer
+            ),
+            401: "Credenciais inválidas"
+        }
+    )
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         if response.status_code == status.HTTP_200_OK:
@@ -36,6 +50,23 @@ class LoginView(TokenObtainPairView):
         return response
 
 class ForgotPasswordView(APIView):
+    @swagger_auto_schema(
+        operation_summary="Solicitar redefinição de senha",
+        operation_description="Solicita a redefinição de senha para o email fornecido. Um token será enviado para o email do usuário.",
+        request_body=PasswordResetSerializer,
+        responses={
+            200: openapi.Response(
+                description="Solicitação processada",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'message': openapi.Schema(type=openapi.TYPE_STRING),
+                    }
+                )
+            ),
+            500: "Erro no servidor de email"
+        }
+    )
     def post(self, request):
         serializer = PasswordResetSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -51,6 +82,23 @@ class ForgotPasswordView(APIView):
             return Response({"message": "Erro no servidor de email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ResetPasswordView(APIView):
+    @swagger_auto_schema(
+        operation_summary="Redefinir senha",
+        operation_description="Redefine a senha do usuário usando o token recebido por email.",
+        request_body=PasswordResetSerializer,
+        responses={
+            200: openapi.Response(
+                description="Senha redefinida com sucesso",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'message': openapi.Schema(type=openapi.TYPE_STRING),
+                    }
+                )
+            ),
+            400: "Token inválido ou expirado"
+        }
+    )
     def post(self, request):
         serializer = PasswordResetSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -88,6 +136,23 @@ class UserListView(generics.ListCreateAPIView):
             user_id = response.data['id']
             Log.create_log(request.user, f'CRIAR_USER:{user_id}')
         return response
+    
+    @swagger_auto_schema(
+        operation_summary="Listar usuários",
+        operation_description="Lista todos os usuários cadastrados. Apenas administradores podem acessar.",
+        responses={200: UserSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+    
+    @swagger_auto_schema(
+        operation_summary="Criar novo usuário",
+        operation_description="Cria um novo usuário no sistema. Apenas administradores podem executar esta ação.",
+        request_body=UserSerializer,
+        responses={201: UserSerializer}
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UserSerializer
@@ -110,8 +175,6 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     
     def destroy(self, request, *args, **kwargs):
         user = self.get_object()
-        
-        # Prevenções de deleção
         if user == request.user:
             return Response({"message": "Você não pode deletar a si mesmo"}, status=status.HTTP_400_BAD_REQUEST)
         if user.username == 'admin':
@@ -124,11 +187,56 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         if response.status_code == status.HTTP_204_NO_CONTENT:
             Log.create_log(request.user, f'DELETE_USER:{user_id}')
         return response
+    
+    @swagger_auto_schema(
+        operation_summary="Obter detalhes do usuário",
+        operation_description="Obtém detalhes de um usuário específico pelo ID ou use 'me' para obter informações do usuário autenticado.",
+        responses={200: UserSerializer}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+    
+    @swagger_auto_schema(
+        operation_summary="Atualizar usuário",
+        operation_description="Atualiza as informações de um usuário existente. Apenas administradores podem executar esta ação.",
+        request_body=UserSerializer,
+        responses={200: UserSerializer}
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+    
+    @swagger_auto_schema(
+        operation_summary="Excluir usuário",
+        operation_description="Exclui um usuário do sistema. Não é possível excluir usuários padrão (admin, user) ou a si mesmo.",
+        responses={204: "Usuário excluído com sucesso"}
+    )
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)
 
 class AdminListView(generics.ListCreateAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated, RoleRequired]
     required_roles = 'admin'
+    
+    def get_queryset(self):
+        return User.objects.filter(role='admin')
+    
+    @swagger_auto_schema(
+        operation_summary="Listar administradores",
+        operation_description="Lista todos os administradores cadastrados no sistema. Apenas administradores podem acessar.",
+        responses={200: UserSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+    
+    @swagger_auto_schema(
+        operation_summary="Criar novo administrador",
+        operation_description="Cria um novo usuário com perfil de administrador. Apenas administradores podem executar esta ação.",
+        request_body=UserSerializer,
+        responses={201: UserSerializer}
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
     
     def get_queryset(self):
         return User.objects.filter(role='admin')
@@ -166,6 +274,32 @@ class AdminDetailView(generics.RetrieveUpdateDestroyAPIView):
             return self.request.user
         return super().get_object()
     
+    @swagger_auto_schema(
+        operation_summary="Obter detalhes do administrador",
+        operation_description="Obtém detalhes de um administrador específico pelo ID ou use 'me' para obter informações do administrador autenticado.",
+        responses={200: UserSerializer}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+    
+    @swagger_auto_schema(
+        operation_summary="Atualizar administrador",
+        operation_description="Atualiza as informações de um administrador existente. Apenas administradores podem executar esta ação.",
+        request_body=UserSerializer,
+        responses={200: UserSerializer}
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+    
+    @swagger_auto_schema(
+        operation_summary="Excluir administrador",
+        operation_description="Exclui um administrador do sistema. Não é possível excluir o administrador padrão (admin) ou a si mesmo.",
+        responses={204: "Administrador excluído com sucesso"}
+    )
+
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)
+    
     def update(self, request, *args, **kwargs):
         response = super().update(request, *args, **kwargs)
         if response.status_code == status.HTTP_200_OK:
@@ -194,41 +328,50 @@ class LogListView(generics.ListAPIView):
     
     def get_queryset(self):
         return Log.objects.all().order_by('-timestamp')
+    
+    @swagger_auto_schema(
+        operation_summary="Listar logs do sistema",
+        operation_description="Lista todos os logs de atividades do sistema. Apenas administradores podem acessar.",
+        responses={200: LogSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
 
 class FileUploadView(APIView):
     parser_classes = [MultiPartParser]
     permission_classes = [permissions.IsAuthenticated]
     
     @swagger_auto_schema(
-        operation_description="Upload de arquivo",
+        operation_summary="Fazer upload de arquivo",
+        operation_description="Realiza o upload de um arquivo associado ao usuário autenticado com verificação de segurança.",
         manual_parameters=[
             openapi.Parameter(
                 name='file',
                 in_=openapi.IN_FORM,
                 type=openapi.TYPE_FILE,
                 required=True,
-                description="Arquivo a ser enviado"
+                description="Arquivo a ser enviado (máx. 10MB)"
             )
         ],
         responses={
             201: openapi.Response(
-                description="Sucesso no upload",
+                description="Arquivo enviado com sucesso",
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
                         'message': openapi.Schema(type=openapi.TYPE_STRING),
                         'filename': openapi.Schema(type=openapi.TYPE_STRING),
                         'path': openapi.Schema(type=openapi.TYPE_STRING),
+                        'exists': openapi.Schema(type=openapi.TYPE_BOOLEAN),
                     }
                 )
             ),
-            400: "Erro de validação ou sem arquivo",
+            400: "Erro de validação ou arquivo suspeito",
             500: "Erro interno ao salvar"
         },
         security=[{'Bearer': []}]
     )
     def post(self, request):
-        # O código existente permanece o mesmo
         serializer = FileUploadSerializer(data=request.data)
         
         if not serializer.is_valid():
@@ -242,33 +385,119 @@ class FileUploadView(APIView):
             if ext not in settings.ALLOWED_EXTENSIONS:
                 return Response({"message": f"Extensão .{ext} não permitida"}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Salvar o arquivo
-        uploaded_file = UploadedFile(user=request.user, file=file)
-        
+        # Verificação de segurança contra arquivos maliciosos
         try:
-            uploaded_file.full_clean()
-            uploaded_file.save()
-        except ValidationError as e:
-            return Response({"message": f"Erro ao salvar arquivo: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+            # Criar arquivo temporário para análise
+            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                for chunk in file.chunks():
+                    temp_file.write(chunk)
+                temp_file_path = temp_file.name
+            
+            # Analisar o tipo MIME real do arquivo
+            mime = magic.Magic(mime=True)
+            real_mime = mime.from_file(temp_file_path)
+            
+            # Lista de tipos MIME perigosos
+            dangerous_mimes = [
+                'application/x-msdownload',  # Executáveis Windows
+                'application/x-dosexec',      # Executáveis DOS
+                'application/x-executable',   # Executáveis genéricos
+                'application/x-sharedlib',    # Bibliotecas compartilhadas
+                'application/x-shellscript',  # Scripts de shell
+                'application/x-python',       # Scripts Python
+                'application/javascript',     # JavaScript
+                'application/x-javascript',   # JavaScript
+                'text/javascript',            # JavaScript
+                'application/x-httpd-php',    # PHP
+                'application/x-php',          # PHP
+                'text/x-php',                 # PHP
+            ]
+            
+            # Verificar se é um tipo perigoso
+            if any(dm in real_mime for dm in dangerous_mimes):
+                os.unlink(temp_file_path)  # Remover arquivo temporário
+                return Response({
+                    "message": "Arquivo potencialmente perigoso detectado",
+                    "detected_type": real_mime,
+                    "filename": file.name
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Verificar se a extensão corresponde ao tipo MIME real
+            expected_extensions = {
+                'image/jpeg': ['jpg', 'jpeg'],
+                'image/png': ['png'],
+                'application/pdf': ['pdf'],
+                'text/plain': ['txt'],
+                # Adicione mais mapeamentos conforme necessário
+            }
+            
+            if real_mime in expected_extensions:
+                if ext not in expected_extensions[real_mime]:
+                    os.unlink(temp_file_path)
+                    return Response({
+                        "message": "Extensão do arquivo não corresponde ao tipo real",
+                        "detected_type": real_mime,
+                        "filename": file.name
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Se passou em todas as verificações, processar o arquivo
+            file.seek(0)  # Voltar ao início do arquivo para leitura
+            
+            # Salvar o arquivo
+            uploaded_file = UploadedFile(user=request.user, file=file)
+            
+            try:
+                uploaded_file = UploadedFile(user=request.user, file=file)
+                uploaded_file.full_clean()
+                uploaded_file.save()
+                if not uploaded_file.exists():
+                    raise Exception("O arquivo não foi salvo corretamente")
+            except ValidationError as e:
+                os.unlink(temp_file_path)
+                return Response({"message": f"Erro ao salvar arquivo: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                os.unlink(temp_file_path)
+                return Response({"message": f"Erro ao salvar arquivo: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            # Remover arquivo temporário após sucesso
+            os.unlink(temp_file_path)
+            
+            Log.create_log(request.user, f'UPLOAD:{file.name}')
+            return Response({
+                "message": "Arquivo enviado com sucesso",
+                "filename": file.name,
+                "path": uploaded_file.file.path,
+                "mime_type": real_mime  # Retornar o tipo MIME detectado
+            }, status=status.HTTP_201_CREATED)
+            
         except Exception as e:
-            return Response({"message": f"Erro ao salvar arquivo: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        Log.create_log(request.user, f'UPLOAD:{file.name}')
-        return Response({
-            "message": "Arquivo enviado com sucesso",
-            "filename": file.name,
-            "path": uploaded_file.file.path
-        }, status=status.HTTP_201_CREATED)
-    
+            return Response({
+                "message": f"Erro na verificação de segurança: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 class FileListView(generics.ListAPIView):
     serializer_class = FileListSerializer
     permission_classes = [permissions.IsAuthenticated]
     
+    @swagger_auto_schema(
+        operation_summary="Listar arquivos enviados",
+        operation_description="Lista todos os arquivos enviados pelo usuário. Administradores veem todos os arquivos.",
+        responses={200: FileListSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+    
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'admin':
-            return UploadedFile.objects.all()
-        return UploadedFile.objects.filter(user=user)
+        queryset = UploadedFile.objects.all()
+        
+        # Filtrar apenas arquivos que existem fisicamente
+        queryset = [obj for obj in queryset if obj.exists()]
+        
+        if user.role != 'admin':
+            queryset = [obj for obj in queryset if obj.user == user]
+        
+        return queryset
     
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)

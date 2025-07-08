@@ -154,6 +154,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
 MEDIA_URL = '/media/'
 ALLOWED_EXTENSIONS = None  # ['jpg', 'png', 'pdf'] ou None para permitir todos
 
+# Tamanho máximo do arquivo em bytes (10MB)
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024
+
 # Swagger
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
@@ -180,6 +183,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 
 # Suprimir avisos específicos
 SILENCED_SYSTEM_CHECKS = [
-    'models.W027',
-    'admin.E410'  
+    'image/jpeg',
+    'image/png',
+    'application/pdf',
+    'text/plain',
 ]
