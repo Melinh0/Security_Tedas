@@ -10,7 +10,7 @@ from django.views.generic import TemplateView
 
 class SwaggerRedirectView(TemplateView):
     template_name = 'swagger_redirect.html'
-
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['token'] = self.request.GET.get('token', '')

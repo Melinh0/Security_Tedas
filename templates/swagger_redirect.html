@@ -2,22 +2,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Swagger Redirect</title>
+    <title>Redirecionando para o Swagger</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        // Extrai o token da URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
-        
-        if (token) {
-            // Redireciona para o Swagger com o token no header
-            window.location.href = `/swagger/?token=${token}`;
-        } else {
-            // Redireciona para o Swagger normal
-            window.location.href = '/swagger/';
-        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            
+            if (token) {
+                // Armazenar token em localStorage (mais persistente)
+                localStorage.setItem('swagger_token', token);
+                
+                // Redirecionar para o Swagger UI
+                window.location.href = '/swagger/';
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Token não encontrado',
+                    text: 'Redirecionando para a página de login...',
+                    timer: 3000,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.href = '/api/login/';
+                });
+            }
+        });
     </script>
 </head>
 <body>
-    <p>Redirecionando para o Swagger...</p>
+    <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+        <div style="text-align: center;">
+            <h2>Autenticação em andamento</h2>
+            <p>Redirecionando para o Swagger UI...</p>
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

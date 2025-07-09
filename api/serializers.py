@@ -7,7 +7,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
         data['role'] = self.user.role
-        data['swagger_redirect'] = f"/swagger/?token={data['access']}"
+        # Gerar URL completa para redirecionamento
+        request = self.context.get('request')
+        host = request.get_host()
+        protocol = 'https' if request.is_secure() else 'http'
+        data['swagger_redirect'] = f"{protocol}://{host}/swagger/redirect/?token={data['access']}"
         return data
 
 class UserSerializer(serializers.ModelSerializer):
@@ -104,7 +108,7 @@ class FileListSerializer(serializers.ModelSerializer):
     size = serializers.SerializerMethodField()
     modified = serializers.SerializerMethodField()
     type = serializers.SerializerMethodField()
-    exists = serializers.SerializerMethodField()  # Novo campo para verificar existência
+    exists = serializers.SerializerMethodField()  
     
     class Meta:
         model = UploadedFile
@@ -124,7 +128,7 @@ class FileListSerializer(serializers.ModelSerializer):
         try:
             return obj.file.size
         except (FileNotFoundError, OSError):
-            return 0  # Retorna 0 se o arquivo não existir
+            return 0  
     
     def get_modified(self, obj):
         try:
@@ -140,4 +144,4 @@ class FileListSerializer(serializers.ModelSerializer):
             return 'deleted'
     
     def get_exists(self, obj):
-        return obj.exists()  # Usa o método que criamos no modelo
+        return obj.exists()  

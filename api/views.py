@@ -31,6 +31,11 @@ User = get_user_model()
 class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
     
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
     @swagger_auto_schema(
         operation_summary="Autenticar usuário",
         operation_description="Autentica um usuário com base nas credenciais fornecidas e retorna tokens de acesso.",

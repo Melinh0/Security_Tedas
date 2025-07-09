@@ -44,6 +44,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'security_api.middleware.TokenDebugMiddleware',
 ]
 
 ROOT_URLCONF = 'security_api.urls'
@@ -176,6 +177,18 @@ SWAGGER_SETTINGS = {
         'drf_yasg.inspectors.DictFieldInspector',
         'drf_yasg.inspectors.SimpleFieldInspector',
         'drf_yasg.inspectors.StringDefaultFieldInspector',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'drf_yasg.renderers.OpenAPIRenderer',
+        'drf_yasg.renderers.SwaggerUIRenderer',
+    ],
+    'DEFAULT_AUTO_SCHEMA_CLASS': 'drf_yasg.inspectors.SwaggerAutoSchema',
+    'TEMPLATES': [
+        {
+            'BACKEND': 'django.template.backends.django.DjangoTemplates',
+            'DIRS': [os.path.join(BASE_DIR, 'templates')],
+            'APP_DIRS': True,
+        },
     ],
 }
 
