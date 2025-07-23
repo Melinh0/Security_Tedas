@@ -7,14 +7,16 @@ from rest_framework.parsers import MultiPartParser
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.utils import timezone
-from .models import Log, UploadedFile
+from .models import Log, UploadedFile, Patient, Exam
 from .serializers import (
     CustomTokenObtainPairSerializer, 
     UserSerializer, 
     PasswordResetSerializer,
     LogSerializer,
     FileUploadSerializer,
-    FileListSerializer
+    FileListSerializer,
+    PatientSerializer,
+    ExamSerializer
 )
 from .permissions import RoleRequired
 from django.shortcuts import get_object_or_404
@@ -508,3 +510,57 @@ class FileListView(generics.ListAPIView):
         response = super().list(request, *args, **kwargs)
         Log.create_log(request.user, 'LISTAR_ARQUIVOS')
         return response
+    
+class PatientListView(generics.ListCreateAPIView):
+    serializer_class = PatientSerializer
+    permission_classes = [permissions.IsAuthenticated, RoleRequired]
+    required_roles = ['admin', 'health_professional']
+    queryset = Patient.objects.all()
+
+class PatientDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = PatientSerializer
+    permission_classes = [permissions.IsAuthenticated, RoleRequired]
+    required_roles = ['admin', 'health_professional']
+    queryset = Patient.objects.all()
+
+class ExamListView(generics.ListCreateAPIView):
+    serializer_class = ExamSerializer
+    permission_classes = [permissions.IsAuthenticated, RoleRequired]
+    
+    def get_required_roles(self):
+        if self.request.method == 'POST':
+            return ['health_professional']
+        return ['admin', 'health_professional', 'researcher']
+    
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Exam.objects.all()
+        
+        # Pesquisadores só veem exames anonimizados
+        if user.role == 'researcher':
+            queryset = queryset.filter(status='segmented')
+        
+        # Profissionais da saúde veem apenas seus pacientes
+        elif user.role == 'health_professional':
+            queryset = queryset.filter(user=user)
+        
+        return queryset
+
+class ExamDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = ExamSerializer
+    permission_classes = [permissions.IsAuthenticated, RoleRequired]
+    
+    def get_required_roles(self):
+        exam = self.get_object()
+        
+        # Apenas o criador do exame ou admin pode editar/excluir
+        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
+            if self.request.user.role == 'admin':
+                return True
+            return exam.user == self.request.user
+        
+        # Visualização permitida para pesquisadores (apenas leitura)
+        return ['admin', 'health_professional', 'researcher']
+    
+    def get_queryset(self):
+        return Exam.objects.all()

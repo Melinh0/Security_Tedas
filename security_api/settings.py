@@ -156,7 +156,7 @@ MEDIA_URL = '/media/'
 ALLOWED_EXTENSIONS = None  # ['jpg', 'png', 'pdf'] ou None para permitir todos
 
 # Tamanho máximo do arquivo em bytes (10MB)
-MAX_UPLOAD_SIZE = 10 * 1024 * 1024
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024
 
 # Swagger
 SWAGGER_SETTINGS = {

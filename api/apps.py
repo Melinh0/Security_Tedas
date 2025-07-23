@@ -15,19 +15,38 @@ def create_default_users(sender, **kwargs):
             admin = User.objects.create_superuser(
                 username='admin',
                 email='admin@example.com',
-                password='admin'
+                password='admin',
+                cpf='00000000000',
+                full_name='Administrador Padrão',
+                role='admin'
             )
             logger.info(f"Admin user created: {admin.username}")
         
-        # Cria user regular se não existir
-        if not User.objects.filter(username='user').exists():
-            user = User.objects.create_user(
-                username='user',
-                email='user@example.com',
-                password='user',
-                role='user'
+        # Cria pesquisador padrão
+        if not User.objects.filter(username='researcher').exists():
+            researcher = User.objects.create_user(
+                username='researcher',
+                email='researcher@example.com',
+                password='researcher',
+                cpf='11111111111',
+                full_name='Pesquisador Padrão',
+                role='researcher'
             )
-            logger.info(f"Regular user created: {user.username}")
+            logger.info(f"Researcher user created: {researcher.username}")
+        
+        # Cria profissional de saúde padrão
+        if not User.objects.filter(username='doctor').exists():
+            doctor = User.objects.create_user(
+                username='doctor',
+                email='doctor@example.com',
+                password='doctor',
+                cpf='22222222222',
+                full_name='Médico Padrão',
+                role='health_professional',
+                professional_type='doctor'
+            )
+            logger.info(f"Health professional created: {doctor.username}")
+            
     except Exception as e:
         logger.error(f"Error creating default users: {e}")
 

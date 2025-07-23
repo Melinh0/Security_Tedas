@@ -1,16 +1,15 @@
 #api/permissions.py
 from rest_framework.permissions import BasePermission
-from rest_framework.exceptions import PermissionDenied
 
 class RoleRequired(BasePermission):
     def has_permission(self, request, view):
         required_roles = getattr(view, 'required_roles', [])
-        if not required_roles:
-            return True
         
+        # Admin tem acesso a tudo
         if request.user.role == 'admin':
             return True
         
+        # Verifica se o usuário tem uma das funções necessárias
         if isinstance(required_roles, str):
             required_roles = [required_roles]
         

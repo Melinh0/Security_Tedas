@@ -1,6 +1,6 @@
 #api/serializers.py
 from rest_framework import serializers
-from .models import CustomUser, Log, UploadedFile
+from .models import CustomUser, Log, UploadedFile, Patient, Exam
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -24,20 +24,19 @@ class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'role', 'password']
+        fields = [
+            'id', 'username', 'email', 'cpf', 'full_name', 
+            'role', 'professional_type', 'password'
+        ]
         extra_kwargs = {
-            'username': {
-                'help_text': "Nome de usuário único para login"
+            'cpf': {
+                'help_text': "CPF do usuário (apenas números)"
             },
-            'email': {
-                'help_text': "Endereço de email válido"
+            'full_name': {
+                'help_text': "Nome completo do usuário"
             },
-            'password': {
-                'write_only': True,
-                'style': {'input_type': 'password'}
-            },
-            'role': {
-                'help_text': "Papel do usuário (admin ou user)"
+            'professional_type': {
+                'help_text': "Tipo de profissional (apenas para profissionais da saúde)"
             }
         }
     
@@ -145,3 +144,26 @@ class FileListSerializer(serializers.ModelSerializer):
     
     def get_exists(self, obj):
         return obj.exists()  
+    
+class PatientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Patient
+        fields = '__all__'
+        extra_kwargs = {
+            'medical_record_number': {
+                'help_text': "Número único do prontuário do paciente"
+            }
+        }
+
+class ExamSerializer(serializers.ModelSerializer):
+    patient_name = serializers.CharField(source='patient.full_name', read_only=True)
+    user_name = serializers.CharField(source='user.full_name', read_only=True)
+
+    class Meta:
+        model = Exam
+        fields = '__all__'
+        extra_kwargs = {
+            'segmentation_tool': {
+                'help_text': "Ferramenta usada para segmentação (Slice O'Matic ou SUPERSEG)"
+            }
+        }

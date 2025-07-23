@@ -7,6 +7,20 @@ from django.core.mail import send_mail
 from django.conf import settings
 import os
 
+# Adicione estas escolhas no topo do arquivo
+USER_ROLE_CHOICES = (
+    ('admin', 'Admin'),
+    ('researcher', 'Pesquisador'),
+    ('health_professional', 'Profissional da Saúde'),
+)
+
+PROFESSIONAL_TYPE_CHOICES = (
+    ('doctor', 'Médico'),
+    ('nutritionist', 'Nutricionista'),
+    ('radiologist', 'Radiologista'),
+    ('other', 'Outro'),
+)
+
 class UserManager(BaseUserManager):
     def create_user(self, username, email, password=None, **extra_fields):
         if not email:
@@ -39,15 +53,19 @@ class UserManager(BaseUserManager):
         
         return self.create_user(username, email, password, **extra_fields)
 
+# Modifique a classe CustomUser
 class CustomUser(AbstractBaseUser, PermissionsMixin):
-    ROLE_CHOICES = (
-        ('admin', 'Admin'),
-        ('user', 'User'),
-    )
-    
     username = models.CharField(max_length=80, unique=True)
     email = models.EmailField(max_length=120, unique=True)
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
+    cpf = models.CharField(max_length=14, unique=True)  # Adicionado CPF
+    full_name = models.CharField(max_length=255)  # Adicionado nome completo
+    role = models.CharField(max_length=20, choices=USER_ROLE_CHOICES, default='health_professional')
+    professional_type = models.CharField(  # Novo campo
+        max_length=20, 
+        choices=PROFESSIONAL_TYPE_CHOICES, 
+        blank=True, 
+        null=True
+    )
     reset_token = models.CharField(max_length=100, blank=True, null=True)
     reset_token_exp = models.DateTimeField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
@@ -132,3 +150,47 @@ class UploadedFile(models.Model):
         except Exception:
             return False
     
+class Patient(models.Model):
+    id = models.AutoField(primary_key=True)
+    full_name = models.CharField(max_length=255)
+    birth_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    medical_info = models.TextField(blank=True, null=True)
+    medical_record_number = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.full_name
+
+class Exam(models.Model):
+    EXAM_STATUS_CHOICES = (
+        ('uploaded', 'Enviado'),
+        ('segmentation_in_progress', 'Em Segmentação'),
+        ('segmented', 'Segmentado'),
+        ('error', 'Erro'),
+    )
+    
+    id = models.AutoField(primary_key=True)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='exams')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True,
+        related_name='exams'
+    )
+    original_dicom_path = models.CharField(max_length=255)  # Caminho para DICOM original
+    anonymized_dicom_path = models.CharField(max_length=255)  # Caminho para DICOM anonimizado
+    segmentation_csv_path = models.CharField(max_length=255, blank=True, null=True)  # Segmentação CSV
+    segmentation_svg_path = models.CharField(max_length=255, blank=True, null=True)  # Segmentação SVG
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=50, choices=EXAM_STATUS_CHOICES, default='uploaded')
+    medical_notes = models.TextField(blank=True, null=True)
+    segmentation_tool = models.CharField(  # Ferramenta de segmentação usada
+        max_length=20, 
+        choices=(('sliceomatic', 'Slice O\'Matic'), ('superseg', 'SUPERSEG')),
+        blank=True,
+        null=True
+    )
+
+    def __str__(self):
+        return f"Exame {self.id} - {self.patient.full_name}"
