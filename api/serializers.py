@@ -2,6 +2,7 @@
 from rest_framework import serializers
 from .models import CustomUser, Log, UploadedFile, Patient, Exam
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .models import USER_ROLE_CHOICES, PROFESSIONAL_TYPE_CHOICES
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -21,6 +22,16 @@ class UserSerializer(serializers.ModelSerializer):
         style={'input_type': 'password'},
         help_text="Senha do usuário (mínimo 8 caracteres)"
     )
+    role = serializers.ChoiceField(  # Alterado para ChoiceField
+        choices=USER_ROLE_CHOICES,
+        help_text="Papel do usuário"
+    )
+    professional_type = serializers.ChoiceField(  # Alterado para ChoiceField
+        choices=PROFESSIONAL_TYPE_CHOICES,
+        required=False,
+        allow_blank=True,
+        help_text="Tipo de profissional (apenas para profissionais da saúde)"
+    )
     
     class Meta:
         model = CustomUser
@@ -34,9 +45,6 @@ class UserSerializer(serializers.ModelSerializer):
             },
             'full_name': {
                 'help_text': "Nome completo do usuário"
-            },
-            'professional_type': {
-                'help_text': "Tipo de profissional (apenas para profissionais da saúde)"
             }
         }
     
