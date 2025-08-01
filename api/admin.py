@@ -8,23 +8,27 @@ class CustomUserAdmin(UserAdmin):
     add_form = CustomUserCreationForm 
     model = CustomUser
     list_display = ['username', 'email', 'full_name', 'role', 'professional_type', 'is_staff', 'is_active']
-    list_filter = ['role', 'professional_type', 'is_staff']  # Adicionado professional_type
+    list_filter = ['role', 'professional_type', 'is_staff']
+    
+    # Campos para edição
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
-        ('Informações Pessoais', {'fields': ('full_name', 'email', 'cpf', 'professional_type')}),  # Atualizado
+        ('Informações Pessoais', {'fields': ('full_name', 'email', '_cpf', 'professional_type')}),
         ('Permissões', {
             'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
         }),
         ('Tokens', {'fields': ('reset_token', 'reset_token_exp')}),
     )
+    
+    # Campos para criação
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username', 'email', 'cpf', 'full_name', 'password1', 'password2', 
+            'fields': ('username', 'email', 'full_name', 'password1', 'password2', 
                        'role', 'professional_type'),
         }),
     )
-    search_fields = ('email', 'username', 'full_name', 'cpf')
+    search_fields = ('email', 'username', 'full_name')
     ordering = ('full_name',)
 
 admin.site.register(CustomUser, CustomUserAdmin)

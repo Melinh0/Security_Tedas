@@ -2,10 +2,10 @@
 from pathlib import Path
 from datetime import timedelta  
 import os 
+import hashlib
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -45,6 +45,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'security_api.middleware.TokenDebugMiddleware',
+    'security_api.middleware.SecurityHeadersMiddleware',
 ]
 
 ROOT_URLCONF = 'security_api.urls'
@@ -201,3 +202,7 @@ SILENCED_SYSTEM_CHECKS = [
     'application/pdf',
     'text/plain',
 ]
+
+# Configurações de criptografia
+ENCRYPTION_ALGORITHM = 'AES-256-CBC'
+ENCRYPTION_KEY = hashlib.sha256(SECRET_KEY.encode()).digest()

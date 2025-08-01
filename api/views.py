@@ -27,6 +27,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.exceptions import ValidationError
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+import hashlib
 
 User = get_user_model()
 
@@ -112,10 +113,15 @@ class ResetPasswordView(APIView):
         
         email = serializer.validated_data['email']
         reset_token = serializer.validated_data['reset_token']
+        hashed_token = hashlib.sha256(reset_token.encode()).hexdigest()        
         new_password = serializer.validated_data['new_password']
         
-        user = get_object_or_404(User, email=email, reset_token=reset_token)
-        
+        user = get_object_or_404(
+            User, 
+            email=email, 
+            reset_token=hashed_token,
+            reset_token_exp__gte=timezone.now()
+        )        
         if user.reset_token_exp < timezone.now():
             return Response({"message": "Token inválido ou expirado"}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -455,8 +461,23 @@ class FileUploadView(APIView):
             
             try:
                 uploaded_file = UploadedFile(user=request.user, file=file)
-                uploaded_file.full_clean()
                 uploaded_file.save()
+                
+                # Se for DICOM, criar registro no Exam
+                if file.name.lower().endswith('.dcm') or file.name.lower().endswith('.dicom'):
+                    exam = Exam(
+                        user=request.user,
+                        patient=Patient.objects.first(),  # Exemplo, implementar lógica real
+                        status='uploaded'
+                    )
+                    exam.save()
+                    exam.save_original_dicom(uploaded_file.get_file_content())
+                    
+                    Log.create_log(request.user, f'UPLOAD_DICOM:{file.name}')
+                    return Response({
+                        "message": "Arquivo DICOM enviado e criptografado com sucesso",
+                        "exam_id": exam.id
+                    }, status=status.HTTP_201_CREATED)
                 if not uploaded_file.exists():
                     raise Exception("O arquivo não foi salvo corretamente")
             except ValidationError as e:

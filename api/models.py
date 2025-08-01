@@ -1,4 +1,3 @@
-#api/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
@@ -6,6 +5,18 @@ import secrets
 from django.core.mail import send_mail
 from django.conf import settings
 import os
+import hashlib
+import base64
+import logging
+from cryptography.fernet import Fernet
+from .utils import encrypt_file, decrypt_file
+
+# Configure o logger
+logger = logging.getLogger(__name__)
+
+# Função para gerar chave de criptografia
+def get_encryption_key():
+    return hashlib.sha256(settings.SECRET_KEY.encode()).digest()[:32]
 
 # Adicione estas escolhas no topo do arquivo
 USER_ROLE_CHOICES = (
@@ -57,7 +68,7 @@ class UserManager(BaseUserManager):
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     username = models.CharField(max_length=80, unique=True)
     email = models.EmailField(max_length=120, unique=True)
-    cpf = models.CharField(max_length=14, unique=True)  # Adicionado CPF
+    _cpf = models.CharField(max_length=255, db_column='cpf', blank=True, null=True)  # Campo criptografado
     full_name = models.CharField(max_length=255)  # Adicionado nome completo
     role = models.CharField(max_length=20, choices=USER_ROLE_CHOICES, default='health_professional')
     professional_type = models.CharField(  # Novo campo
@@ -81,6 +92,18 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.username
 
+    @property
+    def cpf(self):
+        if self._cpf:
+            fernet = Fernet(base64.urlsafe_b64encode(get_encryption_key()))
+            return fernet.decrypt(self._cpf.encode()).decode()
+        return None
+    
+    @cpf.setter
+    def cpf(self, value):
+        fernet = Fernet(base64.urlsafe_b64encode(get_encryption_key()))
+        self._cpf = fernet.encrypt(value.encode()).decode()
+
     def set_password(self, password):
         super().set_password(password)
         
@@ -88,10 +111,12 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         return super().check_password(password)
     
     def generate_reset_token(self):
-        self.reset_token = secrets.token_urlsafe(32)
+        token = secrets.token_urlsafe(32)
+        hashed_token = hashlib.sha256(token.encode()).hexdigest()
+        self.reset_token = hashed_token
         self.reset_token_exp = timezone.now() + timezone.timedelta(hours=1)
         self.save()
-        return self.reset_token
+        return token
         
     def send_reset_email(self):
         try:
@@ -149,17 +174,46 @@ class UploadedFile(models.Model):
             return self.file.storage.exists(self.file.name)
         except Exception:
             return False
+        
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        
+        if is_new and self.file and os.path.exists(self.file.path):
+            encrypt_file(self.file.path)
+    
+    def read_decrypted(self):
+        return decrypt_file(self.file.path)
+    
+    def get_file_content(self):
+        try:
+            return self.read_decrypted()
+        except Exception as e:
+            logger.error(f"Error decrypting file: {str(e)}")
+            return None
     
 class Patient(models.Model):
     id = models.AutoField(primary_key=True)
     full_name = models.CharField(max_length=255)
     birth_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
-    medical_info = models.TextField(blank=True, null=True)
+    _medical_info = models.TextField(db_column='medical_info', blank=True, null=True)  # Campo criptografado
     medical_record_number = models.CharField(max_length=50, unique=True)
 
     def __str__(self):
         return self.full_name
+
+    @property
+    def medical_info(self):
+        if self._medical_info:
+            fernet = Fernet(base64.urlsafe_b64encode(get_encryption_key()))
+            return fernet.decrypt(self._medical_info.encode()).decode()
+        return None
+    
+    @medical_info.setter
+    def medical_info(self, value):
+        fernet = Fernet(base64.urlsafe_b64encode(get_encryption_key()))
+        self._medical_info = fernet.encrypt(value.encode()).decode()
 
 class Exam(models.Model):
     EXAM_STATUS_CHOICES = (
@@ -184,7 +238,7 @@ class Exam(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=50, choices=EXAM_STATUS_CHOICES, default='uploaded')
-    medical_notes = models.TextField(blank=True, null=True)
+    _medical_notes = models.TextField(db_column='medical_notes', blank=True, null=True)  # Campo criptografado
     segmentation_tool = models.CharField(  # Ferramenta de segmentação usada
         max_length=20, 
         choices=(('sliceomatic', 'Slice O\'Matic'), ('superseg', 'SUPERSEG')),
@@ -194,3 +248,34 @@ class Exam(models.Model):
 
     def __str__(self):
         return f"Exame {self.id} - {self.patient.full_name}"
+    
+    @property
+    def medical_notes(self):
+        if self._medical_notes:
+            fernet = Fernet(base64.urlsafe_b64encode(get_encryption_key()))
+            return fernet.decrypt(self._medical_notes.encode()).decode()
+        return None
+    
+    @medical_notes.setter
+    def medical_notes(self, value):
+        fernet = Fernet(base64.urlsafe_b64encode(get_encryption_key()))
+        self._medical_notes = fernet.encrypt(value.encode()).decode()
+    
+    def save_original_dicom(self, dicom_content):
+        # Gera nome de arquivo único
+        filename = f"exam_{self.id}_original.dcm"
+        path = os.path.join(settings.MEDIA_ROOT, 'dicom', filename)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        
+        # Salva e criptografa
+        with open(path, 'wb') as f:
+            f.write(dicom_content)
+        encrypt_file(path)
+        
+        self.original_dicom_path = path
+        self.save()
+    
+    def get_original_dicom(self):
+        if self.original_dicom_path:
+            return decrypt_file(self.original_dicom_path)
+        return None
