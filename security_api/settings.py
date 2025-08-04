@@ -14,13 +14,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-0z1(gbmuaq#ozbb&w85o4vfb10w@*2%1m!%e*5iayji9kya4o9'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
-
+DEBUG = True  # Mantenha True para desenvolvimento
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+USE_X_FORWARDED_HOST = False  # Desative em desenvolvimento local
+SECURE_PROXY_SSL_HEADER = None  # Não necessário em desenvolvimento
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -28,6 +27,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_extensions',
     'rest_framework',
     'rest_framework_simplejwt',
     'drf_yasg',
@@ -44,7 +44,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    'security_api.middleware.TokenDebugMiddleware',
     'security_api.middleware.SecurityHeadersMiddleware',
 ]
 
@@ -53,8 +52,8 @@ ROOT_URLCONF = 'security_api.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
+        'DIRS': [],  # Mantemos vazio
+        'APP_DIRS': True,  # Importante para admin
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
@@ -159,8 +158,15 @@ ALLOWED_EXTENSIONS = None  # ['jpg', 'png', 'pdf'] ou None para permitir todos
 # Tamanho máximo do arquivo em bytes (10MB)
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024
 
+# Configurações de segurança para HTTPS
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = False  # Redireciona HTTP para HTTPS
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+
 # Swagger
 SWAGGER_SETTINGS = {
+    'DEFAULT_SCHEME': 'https',
     'SECURITY_DEFINITIONS': {
         'Bearer': {
             'type': 'apiKey',
@@ -184,13 +190,6 @@ SWAGGER_SETTINGS = {
         'drf_yasg.renderers.SwaggerUIRenderer',
     ],
     'DEFAULT_AUTO_SCHEMA_CLASS': 'drf_yasg.inspectors.SwaggerAutoSchema',
-    'TEMPLATES': [
-        {
-            'BACKEND': 'django.template.backends.django.DjangoTemplates',
-            'DIRS': [os.path.join(BASE_DIR, 'templates')],
-            'APP_DIRS': True,
-        },
-    ],
 }
 
 CORS_ORIGIN_ALLOW_ALL = True

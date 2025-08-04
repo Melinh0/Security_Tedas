@@ -538,11 +538,53 @@ class PatientListView(generics.ListCreateAPIView):
     required_roles = ['admin', 'health_professional']
     queryset = Patient.objects.all()
 
+    @swagger_auto_schema(
+        operation_summary="Listar pacientes",
+        operation_description="Lista todos os pacientes cadastrados. Acesso para administradores e profissionais de saúde.",
+        responses={200: PatientSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Criar novo paciente",
+        operation_description="Cria um novo registro de paciente. Acesso para administradores e profissionais de saúde.",
+        request_body=PatientSerializer,
+        responses={201: PatientSerializer}
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
 class PatientDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = PatientSerializer
     permission_classes = [permissions.IsAuthenticated, RoleRequired]
     required_roles = ['admin', 'health_professional']
     queryset = Patient.objects.all()
+
+    @swagger_auto_schema(
+        operation_summary="Detalhes do paciente",
+        operation_description="Obtém detalhes de um paciente específico pelo ID.",
+        responses={200: PatientSerializer}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Atualizar paciente",
+        operation_description="Atualiza as informações de um paciente existente.",
+        request_body=PatientSerializer,
+        responses={200: PatientSerializer}
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Excluir paciente",
+        operation_description="Exclui permanentemente um registro de paciente.",
+        responses={204: "Paciente excluído com sucesso"}
+    )
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)
 
 class ExamListView(generics.ListCreateAPIView):
     serializer_class = ExamSerializer
@@ -567,6 +609,28 @@ class ExamListView(generics.ListCreateAPIView):
         
         return queryset
 
+    @swagger_auto_schema(
+        operation_summary="Listar exames",
+        operation_description=(
+            "Lista exames de acordo com o perfil do usuário:\n"
+            "- Administradores: Todos os exames\n"
+            "- Profissionais de saúde: Apenas seus próprios exames\n"
+            "- Pesquisadores: Apenas exames anonimizados (segmented)"
+        ),
+        responses={200: ExamSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Criar novo exame",
+        operation_description="Cria um novo registro de exame. Acesso exclusivo para profissionais de saúde.",
+        request_body=ExamSerializer,
+        responses={201: ExamSerializer}
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
 class ExamDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ExamSerializer
     permission_classes = [permissions.IsAuthenticated, RoleRequired]
@@ -585,3 +649,42 @@ class ExamDetailView(generics.RetrieveUpdateDestroyAPIView):
     
     def get_queryset(self):
         return Exam.objects.all()
+
+    @swagger_auto_schema(
+        operation_summary="Detalhes do exame",
+        operation_description=(
+            "Obtém detalhes de um exame específico pelo ID.\n"
+            "Permissões:\n"
+            "- Administradores: Acesso completo\n"
+            "- Profissional de saúde: Apenas seus próprios exames\n"
+            "- Pesquisadores: Apenas exames anonimizados"
+        ),
+        responses={200: ExamSerializer}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Atualizar exame",
+        operation_description=(
+            "Atualiza as informações de um exame existente.\n"
+            "Permissões:\n"
+            "- Apenas administradores ou o profissional de saúde que criou o exame"
+        ),
+        request_body=ExamSerializer,
+        responses={200: ExamSerializer}
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Excluir exame",
+        operation_description=(
+            "Exclui permanentemente um registro de exame.\n"
+            "Permissões:\n"
+            "- Apenas administradores ou o profissional de saúde que criou o exame"
+        ),
+        responses={204: "Exame excluído com sucesso"}
+    )
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)

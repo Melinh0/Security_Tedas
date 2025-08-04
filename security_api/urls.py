@@ -6,15 +6,6 @@ from drf_yasg import openapi
 from rest_framework import permissions
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic import TemplateView
-
-class SwaggerRedirectView(TemplateView):
-    template_name = 'swagger_redirect.html'
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['token'] = self.request.GET.get('token', '')
-        return context
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -50,11 +41,19 @@ schema_view = get_schema_view(
    ),
    public=True,
    permission_classes=[permissions.AllowAny],
+   url='https://' + settings.ALLOWED_HOSTS[0] if settings.ALLOWED_HOSTS else None,
 )
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('swagger/redirect/', SwaggerRedirectView.as_view(), name='swagger-redirect'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+else:
+    # Em produção, force HTTPS para todos os URLs
+    urlpatterns = [
+        path('', include(urlpatterns))
+    ]

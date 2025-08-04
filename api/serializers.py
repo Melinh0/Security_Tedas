@@ -8,11 +8,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
         data['role'] = self.user.role
-        # Gerar URL completa para redirecionamento
-        request = self.context.get('request')
-        host = request.get_host()
-        protocol = 'https' if request.is_secure() else 'http'
-        data['swagger_redirect'] = f"{protocol}://{host}/swagger/redirect/?token={data['access']}"
         return data
 
 class UserSerializer(serializers.ModelSerializer):
@@ -170,8 +165,3 @@ class ExamSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exam
         fields = '__all__'
-        extra_kwargs = {
-            'segmentation_tool': {
-                'help_text': "Ferramenta usada para segmentação (Slice O'Matic ou SUPERSEG)"
-            }
-        }

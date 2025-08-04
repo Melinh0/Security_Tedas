@@ -1,3 +1,4 @@
+#api/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
@@ -239,12 +240,6 @@ class Exam(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=50, choices=EXAM_STATUS_CHOICES, default='uploaded')
     _medical_notes = models.TextField(db_column='medical_notes', blank=True, null=True)  # Campo criptografado
-    segmentation_tool = models.CharField(  # Ferramenta de segmentação usada
-        max_length=20, 
-        choices=(('sliceomatic', 'Slice O\'Matic'), ('superseg', 'SUPERSEG')),
-        blank=True,
-        null=True
-    )
 
     def __str__(self):
         return f"Exame {self.id} - {self.patient.full_name}"
