@@ -41,7 +41,6 @@ schema_view = get_schema_view(
    ),
    public=True,
    permission_classes=[permissions.AllowAny],
-   url='https://' + settings.ALLOWED_HOSTS[0] if settings.ALLOWED_HOSTS else None,
 )
 
 urlpatterns = [
@@ -49,11 +48,3 @@ urlpatterns = [
     path('api/', include('api.urls')),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-else:
-    # Em produção, force HTTPS para todos os URLs
-    urlpatterns = [
-        path('', include(urlpatterns))
-    ]

@@ -232,8 +232,18 @@ class Exam(models.Model):
         null=True,
         related_name='exams'
     )
-    original_dicom_path = models.CharField(max_length=255)  # Caminho para DICOM original
-    anonymized_dicom_path = models.CharField(max_length=255)  # Caminho para DICOM anonimizado
+    original_dicom = models.FileField(
+        upload_to='dicom/original/%Y/%m/%d/',
+        null=True,
+        blank=True,
+        help_text="Arquivo DICOM original"
+    )
+    anonymized_dicom = models.FileField(
+        upload_to='dicom/anonymized/%Y/%m/%d/',
+        null=True,
+        blank=True,
+        help_text="Arquivo DICOM anonimizado"
+    )
     segmentation_csv_path = models.CharField(max_length=255, blank=True, null=True)  # Segmentação CSV
     segmentation_svg_path = models.CharField(max_length=255, blank=True, null=True)  # Segmentação SVG
     uploaded_at = models.DateTimeField(auto_now_add=True)
@@ -256,21 +266,22 @@ class Exam(models.Model):
         fernet = Fernet(base64.urlsafe_b64encode(get_encryption_key()))
         self._medical_notes = fernet.encrypt(value.encode()).decode()
     
-    def save_original_dicom(self, dicom_content):
-        # Gera nome de arquivo único
-        filename = f"exam_{self.id}_original.dcm"
-        path = os.path.join(settings.MEDIA_ROOT, 'dicom', filename)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
         
-        # Salva e criptografa
-        with open(path, 'wb') as f:
-            f.write(dicom_content)
-        encrypt_file(path)
-        
-        self.original_dicom_path = path
-        self.save()
+        # Criptografar arquivos após salvar
+        if is_new and self.original_dicom:
+            encrypt_file(self.original_dicom.path)
+        if self.anonymized_dicom:
+            encrypt_file(self.anonymized_dicom.path)
     
     def get_original_dicom(self):
-        if self.original_dicom_path:
-            return decrypt_file(self.original_dicom_path)
+        if self.original_dicom:
+            return decrypt_file(self.original_dicom.path)
+        return None
+    
+    def get_anonymized_dicom(self):
+        if self.anonymized_dicom:
+            return decrypt_file(self.anonymized_dicom.path)
         return None

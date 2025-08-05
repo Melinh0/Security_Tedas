@@ -16,7 +16,8 @@ from .serializers import (
     FileUploadSerializer,
     FileListSerializer,
     PatientSerializer,
-    ExamSerializer
+    ExamSerializer,
+    ExamCreateSerializer
 )
 from .permissions import RoleRequired
 from django.shortcuts import get_object_or_404
@@ -392,12 +393,14 @@ class FileUploadView(APIView):
         
         file = serializer.validated_data['file']
         
+        # Sempre extraia a extensão, mesmo se ALLOWED_EXTENSIONS não estiver definido
+        ext = os.path.splitext(file.name)[1].lower().lstrip('.')
+
         # Verificar extensões permitidas
         if settings.ALLOWED_EXTENSIONS:
-            ext = os.path.splitext(file.name)[1].lower().lstrip('.')
             if ext not in settings.ALLOWED_EXTENSIONS:
                 return Response({"message": f"Extensão .{ext} não permitida"}, status=status.HTTP_400_BAD_REQUEST)
-        
+            
         # Verificação de segurança contra arquivos maliciosos
         try:
             # Criar arquivo temporário para análise
@@ -589,6 +592,7 @@ class PatientDetailView(generics.RetrieveUpdateDestroyAPIView):
 class ExamListView(generics.ListCreateAPIView):
     serializer_class = ExamSerializer
     permission_classes = [permissions.IsAuthenticated, RoleRequired]
+    parser_classes = [MultiPartParser]  # Aceita upload de arquivos
     
     def get_required_roles(self):
         if self.request.method == 'POST':
@@ -599,11 +603,8 @@ class ExamListView(generics.ListCreateAPIView):
         user = self.request.user
         queryset = Exam.objects.all()
         
-        # Pesquisadores só veem exames anonimizados
         if user.role == 'researcher':
             queryset = queryset.filter(status='segmented')
-        
-        # Profissionais da saúde veem apenas seus pacientes
         elif user.role == 'health_professional':
             queryset = queryset.filter(user=user)
         
@@ -624,12 +625,59 @@ class ExamListView(generics.ListCreateAPIView):
 
     @swagger_auto_schema(
         operation_summary="Criar novo exame",
-        operation_description="Cria um novo registro de exame. Acesso exclusivo para profissionais de saúde.",
+        operation_description="Cria um novo exame com upload de arquivo DICOM",
         request_body=ExamSerializer,
         responses={201: ExamSerializer}
     )
-    def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Verificação de segurança do arquivo
+        dicom_file = serializer.validated_data['dicom_file']
+        temp_file = None
+        
+        try:
+            # Criar arquivo temporário para análise
+            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                for chunk in dicom_file.chunks():
+                    temp_file.write(chunk)
+                temp_file_path = temp_file.name
+            
+            # Verificar tipo MIME
+            mime = magic.Magic(mime=True)
+            real_mime = mime.from_file(temp_file_path)
+            
+            if real_mime not in ['application/dicom', 'application/octet-stream']:
+                raise ValidationError("Tipo de arquivo inválido. Apenas DICOM é permitido")
+            
+            # Criar o exame
+            exam = Exam(
+                patient=serializer.validated_data['patient'],
+                user=request.user,
+                status='uploaded'
+            )
+            
+            if 'medical_notes' in serializer.validated_data:
+                exam.medical_notes = serializer.validated_data['medical_notes']
+            
+            exam.save()
+            
+            # Salvar o arquivo DICOM
+            filename = f"exam_{exam.id}_{dicom_file.name}"
+            exam.original_dicom.save(filename, dicom_file)
+            exam.save()
+            
+            Log.create_log(request.user, f'UPLOAD_DICOM:{filename}')
+            headers = self.get_success_headers(serializer.data)
+            return Response(ExamSerializer(exam).data, status=status.HTTP_201_CREATED, headers=headers)
+        
+        except Exception as e:
+            return Response({"message": f"Erro no processamento: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        finally:
+            if temp_file:
+                os.unlink(temp_file_path)
 
 class ExamDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ExamSerializer

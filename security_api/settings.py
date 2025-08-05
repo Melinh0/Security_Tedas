@@ -1,4 +1,4 @@
-#security_api/settings.py
+# security_api/settings.py
 from pathlib import Path
 from datetime import timedelta  
 import os 
@@ -14,10 +14,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-0z1(gbmuaq#ozbb&w85o4vfb10w@*2%1m!%e*5iayji9kya4o9'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True  # Mantenha True para desenvolvimento
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
-USE_X_FORWARDED_HOST = False  # Desative em desenvolvimento local
-SECURE_PROXY_SSL_HEADER = None  # Não necessário em desenvolvimento
+DEBUG = True
+ALLOWED_HOSTS = []
 
 # Application definition
 INSTALLED_APPS = [
@@ -27,7 +25,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django_extensions',
     'rest_framework',
     'rest_framework_simplejwt',
     'drf_yasg',
@@ -52,8 +49,8 @@ ROOT_URLCONF = 'security_api.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],  # Mantemos vazio
-        'APP_DIRS': True,  # Importante para admin
+        'DIRS': [],
+        'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
@@ -101,11 +98,8 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
 
@@ -118,7 +112,6 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 AUTH_USER_MODEL = 'api.CustomUser'
 
 REST_FRAMEWORK = {
@@ -155,18 +148,12 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
 MEDIA_URL = '/media/'
 ALLOWED_EXTENSIONS = None  # ['jpg', 'png', 'pdf'] ou None para permitir todos
 
-# Tamanho máximo do arquivo em bytes (10MB)
-MAX_UPLOAD_SIZE = 50 * 1024 * 1024
-
-# Configurações de segurança para HTTPS
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SECURE_SSL_REDIRECT = False  # Redireciona HTTP para HTTPS
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
+# Tamanho máximo do arquivo em bytes 
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 
 # Swagger
 SWAGGER_SETTINGS = {
-    'DEFAULT_SCHEME': 'https',
+    'DEFAULT_SCHEME': 'http',
     'SECURITY_DEFINITIONS': {
         'Bearer': {
             'type': 'apiKey',
@@ -174,22 +161,6 @@ SWAGGER_SETTINGS = {
             'in': 'header'
         }
     },
-    'DEFAULT_AUTO_SCHEMA_CLASS': 'drf_yasg.inspectors.SwaggerAutoSchema',
-    'DEFAULT_FIELD_INSPECTORS': [
-        'drf_yasg.inspectors.CamelCaseJSONFilter',
-        'drf_yasg.inspectors.InlineSerializerInspector',
-        'drf_yasg.inspectors.FileFieldInspector',
-        'drf_yasg.inspectors.RelatedFieldInspector',
-        'drf_yasg.inspectors.ChoiceFieldInspector',
-        'drf_yasg.inspectors.DictFieldInspector',
-        'drf_yasg.inspectors.SimpleFieldInspector',
-        'drf_yasg.inspectors.StringDefaultFieldInspector',
-    ],
-    'DEFAULT_RENDERER_CLASSES': [
-        'drf_yasg.renderers.OpenAPIRenderer',
-        'drf_yasg.renderers.SwaggerUIRenderer',
-    ],
-    'DEFAULT_AUTO_SCHEMA_CLASS': 'drf_yasg.inspectors.SwaggerAutoSchema',
 }
 
 CORS_ORIGIN_ALLOW_ALL = True
@@ -200,6 +171,11 @@ SILENCED_SYSTEM_CHECKS = [
     'image/png',
     'application/pdf',
     'text/plain',
+]
+
+DICOM_ALLOWED_MIME_TYPES = [
+    'application/dicom',
+    'application/octet-stream'
 ]
 
 # Configurações de criptografia

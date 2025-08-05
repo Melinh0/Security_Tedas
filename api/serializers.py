@@ -161,7 +161,28 @@ class PatientSerializer(serializers.ModelSerializer):
 class ExamSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source='patient.full_name', read_only=True)
     user_name = serializers.CharField(source='user.full_name', read_only=True)
-
+    dicom_url = serializers.SerializerMethodField()
+    dicom_file = serializers.FileField(  # Novo campo para upload
+        required=True,
+        write_only=True,
+        help_text="Arquivo DICOM a ser enviado",
+        style={'base_template': 'file.html', 'input_type': 'file'}
+    )
+    
     class Meta:
         model = Exam
-        fields = '__all__'
+        fields = [
+            'id', 'patient', 'patient_name', 'user', 'user_name', 
+            'status', 'uploaded_at', 'updated_at', 'medical_notes',
+            'dicom_url', 'dicom_file'  # Inclui o novo campo
+        ]
+    
+    def get_dicom_url(self, obj):
+        if obj.original_dicom:
+            return obj.original_dicom.url
+        return None
+    
+    def validate_dicom_file(self, value):
+        if not value.name.lower().endswith(('.dcm', '.dicom')):
+            raise serializers.ValidationError("Apenas arquivos DICOM são permitidos")
+        return value

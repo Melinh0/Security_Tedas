@@ -14,7 +14,7 @@ from .views import (
     PatientListView, 
     PatientDetailView, 
     ExamListView, 
-    ExamDetailView
+    ExamDetailView,
 )
 
 urlpatterns = [
@@ -32,7 +32,7 @@ urlpatterns = [
     
     path('logs/', LogListView.as_view(), name='log-list'),
     path('files/', FileListView.as_view(), name='file-list'),
-    path('users/me/upload/', FileUploadView.as_view(), name='file-upload'),
+    # path('users/me/upload/', FileUploadView.as_view(), name='file-upload'),
 
     path('patients/', PatientListView.as_view(), name='patient-list'),
     path('patients/<int:pk>/', PatientDetailView.as_view(), name='patient-detail'),
