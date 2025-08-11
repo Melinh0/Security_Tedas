@@ -7,24 +7,20 @@ from rest_framework.parsers import MultiPartParser
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.utils import timezone
-from .models import Log, UploadedFile, Patient, Exam
+from .models import Log, Patient, Exam
 from .serializers import (
     CustomTokenObtainPairSerializer, 
     UserSerializer, 
     PasswordResetSerializer,
     LogSerializer,
-    FileUploadSerializer,
-    FileListSerializer,
     PatientSerializer,
     ExamSerializer,
-    ExamCreateSerializer
 )
 from .permissions import RoleRequired
 from django.shortcuts import get_object_or_404
 import os
 import magic
 import tempfile
-from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.exceptions import ValidationError
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -55,7 +51,7 @@ class LoginView(TokenObtainPairView):
         response = super().post(request, *args, **kwargs)
         if response.status_code == status.HTTP_200_OK:
             user = User.objects.get(username=request.data['username'])
-            Log.create_log(user, 'LOGIN')
+            Log.create_log(user, 'LOGIN', request)
         return response
 
 class ForgotPasswordView(APIView):
@@ -85,7 +81,7 @@ class ForgotPasswordView(APIView):
         token = user.generate_reset_token()
         
         if user.send_reset_email():
-            Log.create_log(user, 'SOLICITACAO_RESET_SENHA')
+            Log.create_log(user, 'SOLICITACAO_RESET_SENHA', request, success=True/False)
             return Response({"message": "Se o email estiver cadastrado, enviaremos um link de recuperação"}, status=status.HTTP_200_OK)
         else:
             return Response({"message": "Erro no servidor de email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -131,7 +127,7 @@ class ResetPasswordView(APIView):
         user.reset_token_exp = None
         user.save()
         
-        Log.create_log(user, 'RESET_SENHA')
+        Log.create_log(user, 'RESET_SENHA', request, success=True/False)
         return Response({"message": "Senha atualizada com sucesso"}, status=status.HTTP_200_OK)
 
 class UserListView(generics.ListCreateAPIView):
@@ -148,7 +144,7 @@ class UserListView(generics.ListCreateAPIView):
         response = super().create(request, *args, **kwargs)
         if response.status_code == status.HTTP_201_CREATED:
             user_id = response.data['id']
-            Log.create_log(request.user, f'CRIAR_USER:{user_id}')
+            Log.create_log(request.user, f'CRIAR_USER:{user_id}', request, success=True/False)
         return response
     
     @swagger_auto_schema(
@@ -184,7 +180,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     def update(self, request, *args, **kwargs):
         response = super().update(request, *args, **kwargs)
         if response.status_code == status.HTTP_200_OK:
-            Log.create_log(request.user, 'ATUALIZAR_USER')
+            Log.create_log(request.user, 'ATUALIZAR_USER', request, success=True/False)
         return response
     
     def destroy(self, request, *args, **kwargs):
@@ -199,7 +195,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         user_id = user.id
         response = super().destroy(request, *args, **kwargs)
         if response.status_code == status.HTTP_204_NO_CONTENT:
-            Log.create_log(request.user, f'DELETE_USER:{user_id}')
+            Log.create_log(request.user, f'DELETE_USER:{user_id}', request, success=True/False)
         return response
     
     @swagger_auto_schema(
@@ -268,7 +264,7 @@ class AdminListView(generics.ListCreateAPIView):
         )
         
         # Agora temos um ID válido para registrar no log
-        Log.create_log(request.user, f'CRIAR_ADMIN:{user.id}')
+        Log.create_log(request.user, f'CRIAR_ADMIN:{user.id}', request, success=True/False)
         
         # Serialize a resposta
         response_serializer = UserSerializer(user)
@@ -317,7 +313,7 @@ class AdminDetailView(generics.RetrieveUpdateDestroyAPIView):
     def update(self, request, *args, **kwargs):
         response = super().update(request, *args, **kwargs)
         if response.status_code == status.HTTP_200_OK:
-            Log.create_log(request.user, 'ATUALIZAR_ADMIN')
+            Log.create_log(request.user, 'ATUALIZAR_ADMIN', request, success=True/False)
         return response
     
     def destroy(self, request, *args, **kwargs):
@@ -332,7 +328,7 @@ class AdminDetailView(generics.RetrieveUpdateDestroyAPIView):
         admin_id = admin.id
         response = super().destroy(request, *args, **kwargs)
         if response.status_code == status.HTTP_204_NO_CONTENT:
-            Log.create_log(request.user, f'DELETE_ADMIN:{admin_id}')
+            Log.create_log(request.user, f'DELETE_ADMIN:{admin_id}', request, success=True/False)
         return response
 
 class LogListView(generics.ListAPIView):
@@ -350,190 +346,6 @@ class LogListView(generics.ListAPIView):
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
-
-class FileUploadView(APIView):
-    parser_classes = [MultiPartParser]
-    permission_classes = [permissions.IsAuthenticated]
-    
-    @swagger_auto_schema(
-        operation_summary="Fazer upload de arquivo",
-        operation_description="Realiza o upload de um arquivo associado ao usuário autenticado com verificação de segurança.",
-        manual_parameters=[
-            openapi.Parameter(
-                name='file',
-                in_=openapi.IN_FORM,
-                type=openapi.TYPE_FILE,
-                required=True,
-                description="Arquivo a ser enviado (máx. 10MB)"
-            )
-        ],
-        responses={
-            201: openapi.Response(
-                description="Arquivo enviado com sucesso",
-                schema=openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        'message': openapi.Schema(type=openapi.TYPE_STRING),
-                        'filename': openapi.Schema(type=openapi.TYPE_STRING),
-                        'path': openapi.Schema(type=openapi.TYPE_STRING),
-                        'exists': openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                    }
-                )
-            ),
-            400: "Erro de validação ou arquivo suspeito",
-            500: "Erro interno ao salvar"
-        },
-        security=[{'Bearer': []}]
-    )
-    def post(self, request):
-        serializer = FileUploadSerializer(data=request.data)
-        
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-        file = serializer.validated_data['file']
-        
-        # Sempre extraia a extensão, mesmo se ALLOWED_EXTENSIONS não estiver definido
-        ext = os.path.splitext(file.name)[1].lower().lstrip('.')
-
-        # Verificar extensões permitidas
-        if settings.ALLOWED_EXTENSIONS:
-            if ext not in settings.ALLOWED_EXTENSIONS:
-                return Response({"message": f"Extensão .{ext} não permitida"}, status=status.HTTP_400_BAD_REQUEST)
-            
-        # Verificação de segurança contra arquivos maliciosos
-        try:
-            # Criar arquivo temporário para análise
-            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-                for chunk in file.chunks():
-                    temp_file.write(chunk)
-                temp_file_path = temp_file.name
-            
-            # Analisar o tipo MIME real do arquivo
-            mime = magic.Magic(mime=True)
-            real_mime = mime.from_file(temp_file_path)
-            
-            # Lista de tipos MIME perigosos
-            dangerous_mimes = [
-                'application/x-msdownload',  # Executáveis Windows
-                'application/x-dosexec',      # Executáveis DOS
-                'application/x-executable',   # Executáveis genéricos
-                'application/x-sharedlib',    # Bibliotecas compartilhadas
-                'application/x-shellscript',  # Scripts de shell
-                'application/x-python',       # Scripts Python
-                'application/javascript',     # JavaScript
-                'application/x-javascript',   # JavaScript
-                'text/javascript',            # JavaScript
-                'application/x-httpd-php',    # PHP
-                'application/x-php',          # PHP
-                'text/x-php',                 # PHP
-            ]
-            
-            # Verificar se é um tipo perigoso
-            if any(dm in real_mime for dm in dangerous_mimes):
-                os.unlink(temp_file_path)  # Remover arquivo temporário
-                return Response({
-                    "message": "Arquivo potencialmente perigoso detectado",
-                    "detected_type": real_mime,
-                    "filename": file.name
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Verificar se a extensão corresponde ao tipo MIME real
-            expected_extensions = {
-                'image/jpeg': ['jpg', 'jpeg'],
-                'image/png': ['png'],
-                'application/pdf': ['pdf'],
-                'text/plain': ['txt'],
-                # Adicione mais mapeamentos conforme necessário
-            }
-            
-            if real_mime in expected_extensions:
-                if ext not in expected_extensions[real_mime]:
-                    os.unlink(temp_file_path)
-                    return Response({
-                        "message": "Extensão do arquivo não corresponde ao tipo real",
-                        "detected_type": real_mime,
-                        "filename": file.name
-                    }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Se passou em todas as verificações, processar o arquivo
-            file.seek(0)  # Voltar ao início do arquivo para leitura
-            
-            # Salvar o arquivo
-            uploaded_file = UploadedFile(user=request.user, file=file)
-            
-            try:
-                uploaded_file = UploadedFile(user=request.user, file=file)
-                uploaded_file.save()
-                
-                # Se for DICOM, criar registro no Exam
-                if file.name.lower().endswith('.dcm') or file.name.lower().endswith('.dicom'):
-                    exam = Exam(
-                        user=request.user,
-                        patient=Patient.objects.first(),  # Exemplo, implementar lógica real
-                        status='uploaded'
-                    )
-                    exam.save()
-                    exam.save_original_dicom(uploaded_file.get_file_content())
-                    
-                    Log.create_log(request.user, f'UPLOAD_DICOM:{file.name}')
-                    return Response({
-                        "message": "Arquivo DICOM enviado e criptografado com sucesso",
-                        "exam_id": exam.id
-                    }, status=status.HTTP_201_CREATED)
-                if not uploaded_file.exists():
-                    raise Exception("O arquivo não foi salvo corretamente")
-            except ValidationError as e:
-                os.unlink(temp_file_path)
-                return Response({"message": f"Erro ao salvar arquivo: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-            except Exception as e:
-                os.unlink(temp_file_path)
-                return Response({"message": f"Erro ao salvar arquivo: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
-            # Remover arquivo temporário após sucesso
-            os.unlink(temp_file_path)
-            
-            Log.create_log(request.user, f'UPLOAD:{file.name}')
-            return Response({
-                "message": "Arquivo enviado com sucesso",
-                "filename": file.name,
-                "path": uploaded_file.file.path,
-                "mime_type": real_mime  # Retornar o tipo MIME detectado
-            }, status=status.HTTP_201_CREATED)
-            
-        except Exception as e:
-            return Response({
-                "message": f"Erro na verificação de segurança: {str(e)}"
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-class FileListView(generics.ListAPIView):
-    serializer_class = FileListSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    
-    @swagger_auto_schema(
-        operation_summary="Listar arquivos enviados",
-        operation_description="Lista todos os arquivos enviados pelo usuário. Administradores veem todos os arquivos.",
-        responses={200: FileListSerializer(many=True)}
-    )
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
-    
-    def get_queryset(self):
-        user = self.request.user
-        queryset = UploadedFile.objects.all()
-        
-        # Filtrar apenas arquivos que existem fisicamente
-        queryset = [obj for obj in queryset if obj.exists()]
-        
-        if user.role != 'admin':
-            queryset = [obj for obj in queryset if obj.user == user]
-        
-        return queryset
-    
-    def list(self, request, *args, **kwargs):
-        response = super().list(request, *args, **kwargs)
-        Log.create_log(request.user, 'LISTAR_ARQUIVOS')
-        return response
     
 class PatientListView(generics.ListCreateAPIView):
     serializer_class = PatientSerializer
@@ -625,10 +437,25 @@ class ExamListView(generics.ListCreateAPIView):
 
     @swagger_auto_schema(
         operation_summary="Criar novo exame",
-        operation_description="Cria um novo exame com upload de arquivo DICOM",
+        operation_description=(
+            "Cria um novo exame com upload de arquivo DICOM\n\n"
+            "**Campos obrigatórios:**\n"
+            "- `patient`: ID do paciente associado\n"
+            "- `dicom_file`: Arquivo DICOM a ser enviado\n\n"
+            "**Campos opcionais:**\n"
+            "- `medical_notes`: Notas médicas sobre o exame\n"
+            "- `status`: Status inicial do exame (padrão: 'uploaded')"
+        ),
         request_body=ExamSerializer,
-        responses={201: ExamSerializer}
+        responses={
+            201: ExamSerializer,
+            400: "Erro de validação",
+            403: "Permissão negada"
+        }
     )
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -648,7 +475,7 @@ class ExamListView(generics.ListCreateAPIView):
             mime = magic.Magic(mime=True)
             real_mime = mime.from_file(temp_file_path)
             
-            if real_mime not in ['application/dicom', 'application/octet-stream']:
+            if real_mime not in settings.DICOM_ALLOWED_MIME_TYPES:
                 raise ValidationError("Tipo de arquivo inválido. Apenas DICOM é permitido")
             
             # Criar o exame
@@ -668,11 +495,12 @@ class ExamListView(generics.ListCreateAPIView):
             exam.original_dicom.save(filename, dicom_file)
             exam.save()
             
-            Log.create_log(request.user, f'UPLOAD_DICOM:{filename}')
+            Log.create_log(request.user, f'UPLOAD_DICOM:{filename}', request, success=True)
             headers = self.get_success_headers(serializer.data)
             return Response(ExamSerializer(exam).data, status=status.HTTP_201_CREATED, headers=headers)
         
         except Exception as e:
+            Log.create_log(request.user, f'UPLOAD_DICOM_FAILED:{dicom_file.name}', request, success=False)
             return Response({"message": f"Erro no processamento: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
         
         finally:

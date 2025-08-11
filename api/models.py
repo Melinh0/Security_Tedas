@@ -84,6 +84,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
+    last_modified = models.DateTimeField(auto_now=True)
 
     objects = UserManager()
 
@@ -144,60 +145,33 @@ class Log(models.Model):
     )
     action = models.CharField(max_length=50)
     timestamp = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField()  # Novo campo
+    success = models.BooleanField(default=True)   # Novo campo
     
     @classmethod
-    def create_log(cls, user, action):
-        cls.objects.create(user=user, action=action)
+    def create_log(cls, user, action, request, success=True):
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        
+        cls.objects.create(
+            user=user, 
+            action=action, 
+            ip_address=ip,
+            success=success
+        )
     
     def __str__(self):
         return f"{self.user} - {self.action} at {self.timestamp}"
-
-class UploadedFile(models.Model):
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
-        on_delete=models.CASCADE
-    )
-    file = models.FileField(upload_to='uploads/%Y/%m/%d/')
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-    
-    def __str__(self):
-        return self.file.name
-    
-    def filename(self):
-        try:
-            return os.path.basename(self.file.name)
-        except FileNotFoundError:
-            return "Arquivo não encontrado"
-    
-    def exists(self):
-        """Verifica se o arquivo físico existe"""
-        try:
-            return self.file.storage.exists(self.file.name)
-        except Exception:
-            return False
-        
-    def save(self, *args, **kwargs):
-        is_new = self.pk is None
-        super().save(*args, **kwargs)
-        
-        if is_new and self.file and os.path.exists(self.file.path):
-            encrypt_file(self.file.path)
-    
-    def read_decrypted(self):
-        return decrypt_file(self.file.path)
-    
-    def get_file_content(self):
-        try:
-            return self.read_decrypted()
-        except Exception as e:
-            logger.error(f"Error decrypting file: {str(e)}")
-            return None
     
 class Patient(models.Model):
     id = models.AutoField(primary_key=True)
     full_name = models.CharField(max_length=255)
     birth_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)  # Novo campo
     _medical_info = models.TextField(db_column='medical_info', blank=True, null=True)  # Campo criptografado
     medical_record_number = models.CharField(max_length=50, unique=True)
 
@@ -244,12 +218,12 @@ class Exam(models.Model):
         blank=True,
         help_text="Arquivo DICOM anonimizado"
     )
-    segmentation_csv_path = models.CharField(max_length=255, blank=True, null=True)  # Segmentação CSV
-    segmentation_svg_path = models.CharField(max_length=255, blank=True, null=True)  # Segmentação SVG
+    segmentation_path = models.CharField(max_length=255, blank=True, null=True)  # Campo unificado
+    mask_path = models.CharField(max_length=255, blank=True, null=True)  # Novo campo
     uploaded_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=50, choices=EXAM_STATUS_CHOICES, default='uploaded')
-    _medical_notes = models.TextField(db_column='medical_notes', blank=True, null=True)  # Campo criptografado
+    _medical_notes = models.TextField(db_column='medical_notes', blank=True, null=True)
 
     def __str__(self):
         return f"Exame {self.id} - {self.patient.full_name}"

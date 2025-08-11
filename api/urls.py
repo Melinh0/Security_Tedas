@@ -9,8 +9,6 @@ from .views import (
     AdminListView,
     AdminDetailView,
     LogListView,
-    FileUploadView,
-    FileListView,
     PatientListView, 
     PatientDetailView, 
     ExamListView, 
@@ -31,7 +29,6 @@ urlpatterns = [
     path('admins/me/', AdminDetailView.as_view(), name='admin-me'),
     
     path('logs/', LogListView.as_view(), name='log-list'),
-    path('files/', FileListView.as_view(), name='file-list'),
     # path('users/me/upload/', FileUploadView.as_view(), name='file-upload'),
 
     path('patients/', PatientListView.as_view(), name='patient-list'),

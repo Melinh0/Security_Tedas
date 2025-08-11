@@ -1,6 +1,6 @@
 #api/serializers.py
 from rest_framework import serializers
-from .models import CustomUser, Log, UploadedFile, Patient, Exam
+from .models import CustomUser, Log, Patient, Exam
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import USER_ROLE_CHOICES, PROFESSIONAL_TYPE_CHOICES
 
@@ -17,11 +17,11 @@ class UserSerializer(serializers.ModelSerializer):
         style={'input_type': 'password'},
         help_text="Senha do usuário (mínimo 8 caracteres)"
     )
-    role = serializers.ChoiceField(  # Alterado para ChoiceField
+    role = serializers.ChoiceField(
         choices=USER_ROLE_CHOICES,
         help_text="Papel do usuário"
     )
-    professional_type = serializers.ChoiceField(  # Alterado para ChoiceField
+    professional_type = serializers.ChoiceField(
         choices=PROFESSIONAL_TYPE_CHOICES,
         required=False,
         allow_blank=True,
@@ -32,7 +32,8 @@ class UserSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [
             'id', 'username', 'email', 'cpf', 'full_name', 
-            'role', 'professional_type', 'password'
+            'role', 'professional_type', 'password',
+            'date_joined', 'last_modified'
         ]
         extra_kwargs = {
             'cpf': {
@@ -40,6 +41,12 @@ class UserSerializer(serializers.ModelSerializer):
             },
             'full_name': {
                 'help_text': "Nome completo do usuário"
+            },
+            'date_joined': {
+                'help_text': "Data de cadastro do usuário"
+            },
+            'last_modified': {
+                'help_text': "Última atualização dos dados do usuário"
             }
         }
     
@@ -75,7 +82,7 @@ class LogSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Log
-        fields = ['id', 'user', 'action', 'timestamp', 'username', 'email']
+        fields = ['id', 'user', 'action', 'timestamp', 'username', 'email', 'ip_address', 'success']
         extra_kwargs = {
             'action': {
                 'help_text': "Ação registrada no log (ex: LOGIN, UPLOAD, RESET_SENHA)"
@@ -88,6 +95,12 @@ class LogSerializer(serializers.ModelSerializer):
             },
             'email': {
                 'help_text': "Email do usuário que realizou a ação"
+            },
+            'ip_address': {
+                'help_text': "Endereço IP do usuário durante a ação"
+            },
+            'success': {
+                'help_text': "Indica se a ação foi bem sucedida"
             }
         }
     
@@ -96,57 +109,6 @@ class LogSerializer(serializers.ModelSerializer):
     
     def get_email(self, obj):
         return obj.user.email if obj.user else ""
-
-class FileUploadSerializer(serializers.Serializer):
-    file = serializers.FileField(
-        required=True,
-        help_text="Arquivo a ser enviado",
-        style={'base_template': 'file.html', 'input_type': 'file'}
-    )
-
-class FileListSerializer(serializers.ModelSerializer):
-    user_id = serializers.IntegerField(source='user.id')
-    name = serializers.SerializerMethodField()
-    size = serializers.SerializerMethodField()
-    modified = serializers.SerializerMethodField()
-    type = serializers.SerializerMethodField()
-    exists = serializers.SerializerMethodField()  
-    
-    class Meta:
-        model = UploadedFile
-        fields = ['user_id', 'name', 'size', 'modified', 'type', 'exists']
-        extra_kwargs = {
-            'name': {'help_text': "Nome do arquivo"},
-            'size': {'help_text': "Tamanho do arquivo em bytes"},
-            'modified': {'help_text': "Data de modificação em timestamp Unix"},
-            'type': {'help_text': "Extensão do arquivo"},
-            'exists': {'help_text': "Indica se o arquivo físico existe"}
-        }
-    
-    def get_name(self, obj):
-        return obj.filename()
-    
-    def get_size(self, obj):
-        try:
-            return obj.file.size
-        except (FileNotFoundError, OSError):
-            return 0  
-    
-    def get_modified(self, obj):
-        try:
-            return obj.uploaded_at.timestamp()
-        except (FileNotFoundError, OSError):
-            return None
-    
-    def get_type(self, obj):
-        try:
-            name = obj.filename()
-            return name.split('.')[-1].lower() if '.' in name else 'unknown'
-        except (FileNotFoundError, OSError):
-            return 'deleted'
-    
-    def get_exists(self, obj):
-        return obj.exists()  
     
 class PatientSerializer(serializers.ModelSerializer):
     class Meta:
@@ -155,6 +117,15 @@ class PatientSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'medical_record_number': {
                 'help_text': "Número único do prontuário do paciente"
+            },
+            'birth_date': {
+                'help_text': "Data de nascimento do paciente (YYYY-MM-DD)"
+            },
+            'created_at': {
+                'help_text': "Data de cadastro do paciente"
+            },
+            'updated_at': {
+                'help_text': "Última atualização dos dados do paciente"
             }
         }
 
@@ -162,7 +133,7 @@ class ExamSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source='patient.full_name', read_only=True)
     user_name = serializers.CharField(source='user.full_name', read_only=True)
     dicom_url = serializers.SerializerMethodField()
-    dicom_file = serializers.FileField(  # Novo campo para upload
+    dicom_file = serializers.FileField(
         required=True,
         write_only=True,
         help_text="Arquivo DICOM a ser enviado",
@@ -174,8 +145,22 @@ class ExamSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'patient', 'patient_name', 'user', 'user_name', 
             'status', 'uploaded_at', 'updated_at', 'medical_notes',
-            'dicom_url', 'dicom_file'  # Inclui o novo campo
+            'dicom_url', 'dicom_file', 'segmentation_path', 'mask_path'
         ]
+        extra_kwargs = {
+            'segmentation_path': {
+                'help_text': "Caminho para arquivo de segmentação"
+            },
+            'mask_path': {
+                'help_text': "Caminho para arquivo de máscara"
+            },
+            'uploaded_at': {
+                'help_text': "Data de envio do exame"
+            },
+            'updated_at': {
+                'help_text': "Última atualização do exame"
+            }
+        }
     
     def get_dicom_url(self, obj):
         if obj.original_dicom:
