@@ -1,6 +1,5 @@
-#api/serializers.py
 from rest_framework import serializers
-from .models import CustomUser, Log, Patient, Exam
+from .models import ProfissionalSaude, Registro, Paciente, FatiaTomografia
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import USER_ROLE_CHOICES, PROFESSIONAL_TYPE_CHOICES
 
@@ -10,7 +9,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['role'] = self.user.role
         return data
 
-class UserSerializer(serializers.ModelSerializer):
+class ProfissionalSaudeSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True,
         required=True,
@@ -29,7 +28,7 @@ class UserSerializer(serializers.ModelSerializer):
     )
     
     class Meta:
-        model = CustomUser
+        model = ProfissionalSaude
         fields = [
             'id', 'username', 'email', 'cpf', 'full_name', 
             'role', 'professional_type', 'password',
@@ -72,17 +71,17 @@ class PasswordResetSerializer(serializers.Serializer):
     )
     
     def validate_email(self, value):
-        if not CustomUser.objects.filter(email=value).exists():
+        if not ProfissionalSaude.objects.filter(email=value).exists():
             raise serializers.ValidationError("Email não cadastrado")
         return value
 
-class LogSerializer(serializers.ModelSerializer):
+class RegistroSerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField()
     email = serializers.SerializerMethodField()
     
     class Meta:
-        model = Log
-        fields = ['id', 'user', 'action', 'timestamp', 'username', 'email', 'ip_address', 'success']
+        model = Registro
+        fields = ['id', 'profissional', 'action', 'timestamp', 'username', 'email', 'ip_address', 'success']
         extra_kwargs = {
             'action': {
                 'help_text': "Ação registrada no log (ex: LOGIN, UPLOAD, RESET_SENHA)"
@@ -105,19 +104,16 @@ class LogSerializer(serializers.ModelSerializer):
         }
     
     def get_username(self, obj):
-        return obj.user.username if obj.user else "Usuário deletado"
+        return obj.profissional.username if obj.profissional else "Usuário deletado"
     
     def get_email(self, obj):
-        return obj.user.email if obj.user else ""
+        return obj.profissional.email if obj.profissional else ""
     
-class PatientSerializer(serializers.ModelSerializer):
+class PacienteSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Patient
+        model = Paciente
         fields = '__all__'
         extra_kwargs = {
-            'medical_record_number': {
-                'help_text': "Número único do prontuário do paciente"
-            },
             'birth_date': {
                 'help_text': "Data de nascimento do paciente (YYYY-MM-DD)"
             },
@@ -129,9 +125,9 @@ class PatientSerializer(serializers.ModelSerializer):
             }
         }
 
-class ExamSerializer(serializers.ModelSerializer):
-    patient_name = serializers.CharField(source='patient.full_name', read_only=True)
-    user_name = serializers.CharField(source='user.full_name', read_only=True)
+class FatiaTomografiaSerializer(serializers.ModelSerializer):
+    patient_name = serializers.CharField(source='paciente.full_name', read_only=True)
+    user_name = serializers.CharField(source='profissional.full_name', read_only=True)
     dicom_url = serializers.SerializerMethodField()
     dicom_file = serializers.FileField(
         required=True,
@@ -141,9 +137,9 @@ class ExamSerializer(serializers.ModelSerializer):
     )
     
     class Meta:
-        model = Exam
+        model = FatiaTomografia
         fields = [
-            'id', 'patient', 'patient_name', 'user', 'user_name', 
+            'id', 'paciente', 'patient_name', 'profissional', 'user_name', 
             'status', 'uploaded_at', 'updated_at', 'medical_notes',
             'dicom_url', 'dicom_file', 'segmentation_path', 'mask_path'
         ]

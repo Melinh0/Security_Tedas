@@ -65,14 +65,14 @@ class UserManager(BaseUserManager):
         
         return self.create_user(username, email, password, **extra_fields)
 
-# Modifique a classe CustomUser
-class CustomUser(AbstractBaseUser, PermissionsMixin):
+# Classe renomeada para ProfissionalSaude
+class ProfissionalSaude(AbstractBaseUser, PermissionsMixin):
     username = models.CharField(max_length=80, unique=True)
     email = models.EmailField(max_length=120, unique=True)
-    _cpf = models.CharField(max_length=255, db_column='cpf', blank=True, null=True)  # Campo criptografado
-    full_name = models.CharField(max_length=255)  # Adicionado nome completo
+    _cpf = models.CharField(max_length=255, db_column='cpf', blank=True, null=True)
+    full_name = models.CharField(max_length=255)
     role = models.CharField(max_length=20, choices=USER_ROLE_CHOICES, default='health_professional')
-    professional_type = models.CharField(  # Novo campo
+    professional_type = models.CharField(
         max_length=20, 
         choices=PROFESSIONAL_TYPE_CHOICES, 
         blank=True, 
@@ -137,19 +137,20 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
             print(f"Erro ao enviar email: {str(e)}")
             return False
 
-class Log(models.Model):
-    user = models.ForeignKey(
+# Classe renomeada para Registro
+class Registro(models.Model):
+    profissional = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.SET_NULL, 
         null=True
     )
     action = models.CharField(max_length=50)
     timestamp = models.DateTimeField(auto_now_add=True)
-    ip_address = models.GenericIPAddressField()  # Novo campo
-    success = models.BooleanField(default=True)   # Novo campo
+    ip_address = models.GenericIPAddressField()
+    success = models.BooleanField(default=True)
     
     @classmethod
-    def create_log(cls, user, action, request, success=True):
+    def criar_registro(cls, profissional, action, request, success=True):
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
             ip = x_forwarded_for.split(',')[0]
@@ -157,23 +158,23 @@ class Log(models.Model):
             ip = request.META.get('REMOTE_ADDR')
         
         cls.objects.create(
-            user=user, 
+            profissional=profissional, 
             action=action, 
             ip_address=ip,
             success=success
         )
     
     def __str__(self):
-        return f"{self.user} - {self.action} at {self.timestamp}"
+        return f"{self.profissional} - {self.action} at {self.timestamp}"
     
-class Patient(models.Model):
+# Classe renomeada para Paciente
+class Paciente(models.Model):
     id = models.AutoField(primary_key=True)
     full_name = models.CharField(max_length=255)
     birth_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)  # Novo campo
-    _medical_info = models.TextField(db_column='medical_info', blank=True, null=True)  # Campo criptografado
-    medical_record_number = models.CharField(max_length=50, unique=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    _medical_info = models.TextField(db_column='medical_info', blank=True, null=True)
 
     def __str__(self):
         return self.full_name
@@ -190,8 +191,9 @@ class Patient(models.Model):
         fernet = Fernet(base64.urlsafe_b64encode(get_encryption_key()))
         self._medical_info = fernet.encrypt(value.encode()).decode()
 
-class Exam(models.Model):
-    EXAM_STATUS_CHOICES = (
+# Classe renomeada para FatiaTomografia
+class FatiaTomografia(models.Model):
+    STATUS_CHOICES = (
         ('uploaded', 'Enviado'),
         ('segmentation_in_progress', 'Em Segmentação'),
         ('segmented', 'Segmentado'),
@@ -199,12 +201,12 @@ class Exam(models.Model):
     )
     
     id = models.AutoField(primary_key=True)
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='exams')
-    user = models.ForeignKey(
+    paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE, related_name='fatias_tomografia')
+    profissional = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.SET_NULL, 
         null=True,
-        related_name='exams'
+        related_name='fatias_tomografia'
     )
     original_dicom = models.FileField(
         upload_to='dicom/original/%Y/%m/%d/',
@@ -218,15 +220,15 @@ class Exam(models.Model):
         blank=True,
         help_text="Arquivo DICOM anonimizado"
     )
-    segmentation_path = models.CharField(max_length=255, blank=True, null=True)  # Campo unificado
-    mask_path = models.CharField(max_length=255, blank=True, null=True)  # Novo campo
+    segmentation_path = models.CharField(max_length=255, blank=True, null=True)
+    mask_path = models.CharField(max_length=255, blank=True, null=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    status = models.CharField(max_length=50, choices=EXAM_STATUS_CHOICES, default='uploaded')
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='uploaded')
     _medical_notes = models.TextField(db_column='medical_notes', blank=True, null=True)
 
     def __str__(self):
-        return f"Exame {self.id} - {self.patient.full_name}"
+        return f"Exame {self.id} - {self.paciente.full_name}"
     
     @property
     def medical_notes(self):

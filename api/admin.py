@@ -1,12 +1,12 @@
 # api/admin.py
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser
-from .forms import CustomUserCreationForm
+from .models import ProfissionalSaude, Paciente, FatiaTomografia, Registro
+from .forms import ProfissionalSaudeCreationForm
 
-class CustomUserAdmin(UserAdmin):
-    add_form = CustomUserCreationForm 
-    model = CustomUser
+class ProfissionalSaudeAdmin(UserAdmin):
+    add_form = ProfissionalSaudeCreationForm 
+    model = ProfissionalSaude
     list_display = ['username', 'email', 'full_name', 'role', 'professional_type', 'is_staff', 'is_active']
     list_filter = ['role', 'professional_type', 'is_staff']
     
@@ -31,4 +31,7 @@ class CustomUserAdmin(UserAdmin):
     search_fields = ('email', 'username', 'full_name')
     ordering = ('full_name',)
 
-admin.site.register(CustomUser, CustomUserAdmin)
+admin.site.register(ProfissionalSaude, ProfissionalSaudeAdmin)
+admin.site.register(Registro)
+admin.site.register(Paciente)
+admin.site.register(FatiaTomografia)

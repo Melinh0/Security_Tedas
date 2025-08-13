@@ -8,11 +8,11 @@ from .views import (
     UserDetailView,
     AdminListView,
     AdminDetailView,
-    LogListView,
-    PatientListView, 
-    PatientDetailView, 
-    ExamListView, 
-    ExamDetailView,
+    RegistroListView,
+    PacienteListView, 
+    PacienteDetailView, 
+    FatiaTomografiaListView, 
+    FatiaTomografiaDetailView,
 )
 
 urlpatterns = [
@@ -20,19 +20,18 @@ urlpatterns = [
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
     path('reset-password/', ResetPasswordView.as_view(), name='reset_password'),
     
-    path('users/', UserListView.as_view(), name='user-list'),
-    path('users/<pk>/', UserDetailView.as_view(), name='user-detail'),
-    path('users/me/', UserDetailView.as_view(), name='user-me'),
+    path('profissionalsaude/', UserListView.as_view(), name='user-list'),
+    path('profissionalsaude/<pk>/', UserDetailView.as_view(), name='user-detail'),
+    path('profissionalsaude/me/', UserDetailView.as_view(), name='user-me'),
     
     path('admins/', AdminListView.as_view(), name='admin-list'),
     path('admins/<pk>/', AdminDetailView.as_view(), name='admin-detail'),
     path('admins/me/', AdminDetailView.as_view(), name='admin-me'),
     
-    path('logs/', LogListView.as_view(), name='log-list'),
-    # path('users/me/upload/', FileUploadView.as_view(), name='file-upload'),
-
-    path('patients/', PatientListView.as_view(), name='patient-list'),
-    path('patients/<int:pk>/', PatientDetailView.as_view(), name='patient-detail'),
-    path('exams/', ExamListView.as_view(), name='exam-list'),
-    path('exams/<int:pk>/', ExamDetailView.as_view(), name='exam-detail'),
+    path('registros/', RegistroListView.as_view(), name='registro-list'),
+    
+    path('pacientes/', PacienteListView.as_view(), name='paciente-list'),
+    path('pacientes/<int:pk>/', PacienteDetailView.as_view(), name='paciente-detail'),
+    path('fatias_tomografia/', FatiaTomografiaListView.as_view(), name='fatiatomografia-list'),
+    path('fatias_tomografia/<int:pk>/', FatiaTomografiaDetailView.as_view(), name='fatiatomografia-detail'),
 ]

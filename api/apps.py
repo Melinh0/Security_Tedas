@@ -6,8 +6,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 def create_default_users(sender, **kwargs):
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
+    from .models import ProfissionalSaude
+    User = ProfissionalSaude
     
     try:
         # Cria admin se não existir

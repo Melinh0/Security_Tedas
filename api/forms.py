@@ -1,11 +1,11 @@
 #api/forms.py
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import CustomUser
+from .models import ProfissionalSaude
 
-class CustomUserCreationForm(UserCreationForm):
+class ProfissionalSaudeCreationForm(UserCreationForm):
     class Meta:
-        model = CustomUser
+        model = ProfissionalSaude
         fields = ('username', 'email', 'full_name', 'role', 'professional_type')
         
     def clean(self):
