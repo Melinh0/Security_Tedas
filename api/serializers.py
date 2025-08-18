@@ -26,6 +26,11 @@ class ProfissionalSaudeSerializer(serializers.ModelSerializer):
         allow_blank=True,
         help_text="Tipo de profissional (apenas para profissionais da saúde)"
     )
+    cpf = serializers.CharField(
+        required=True,
+        write_only=True,  # Opcional: depende se você quer retornar o CPF após criação
+        help_text="CPF do usuário (apenas números)"
+    )
     
     class Meta:
         model = ProfissionalSaude
@@ -35,6 +40,7 @@ class ProfissionalSaudeSerializer(serializers.ModelSerializer):
             'date_joined', 'last_modified'
         ]
         extra_kwargs = {
+            'password': {'write_only': True},
             'cpf': {
                 'help_text': "CPF do usuário (apenas números)"
             },
@@ -50,10 +56,11 @@ class ProfissionalSaudeSerializer(serializers.ModelSerializer):
         }
     
     def create(self, validated_data):
-        password = validated_data.pop('password')
+        cpf = validated_data.pop('cpf', None)
         user = super().create(validated_data)
-        user.set_password(password)
-        user.save()
+        if cpf:
+            user.cpf = cpf  # Usa o setter para criptografia
+            user.save()
         return user
 
 class PasswordResetSerializer(serializers.Serializer):
@@ -110,20 +117,11 @@ class RegistroSerializer(serializers.ModelSerializer):
         return obj.profissional.email if obj.profissional else ""
     
 class PacienteSerializer(serializers.ModelSerializer):
+    medical_info = serializers.CharField(write_only=True, required=False)
+
     class Meta:
         model = Paciente
         fields = '__all__'
-        extra_kwargs = {
-            'birth_date': {
-                'help_text': "Data de nascimento do paciente (YYYY-MM-DD)"
-            },
-            'created_at': {
-                'help_text': "Data de cadastro do paciente"
-            },
-            'updated_at': {
-                'help_text': "Última atualização dos dados do paciente"
-            }
-        }
 
 class FatiaTomografiaSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source='paciente.full_name', read_only=True)

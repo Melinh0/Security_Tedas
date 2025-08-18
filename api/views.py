@@ -255,22 +255,20 @@ class AdminListView(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        # Crie o usuário usando o UserManager
+        # Crie o usuário incluindo o CPF
         user = ProfissionalSaude.objects.create_user(
             username=serializer.validated_data['username'],
             email=serializer.validated_data['email'],
             password=serializer.validated_data['password'],
+            cpf=serializer.validated_data['cpf'],  # Adicionado
+            full_name=serializer.validated_data['full_name'],
             role='admin'
         )
         
-        # Agora temos um ID válido para registrar no log
         Registro.criar_registro(request.user, f'CRIAR_ADMIN:{user.id}', request, success=True)
-        
-        # Serialize a resposta
         response_serializer = ProfissionalSaudeSerializer(user)
-        headers = self.get_success_headers(response_serializer.data)
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+    
 class AdminDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProfissionalSaudeSerializer
     permission_classes = [permissions.IsAuthenticated, RoleRequired]
