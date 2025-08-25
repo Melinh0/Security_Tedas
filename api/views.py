@@ -15,6 +15,7 @@ from .serializers import (
     RegistroSerializer,
     PacienteSerializer,
     FatiaTomografiaSerializer,
+    AdminCreationSerializer
 )
 from .permissions import RoleRequired
 from django.shortcuts import get_object_or_404
@@ -224,7 +225,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         return super().delete(request, *args, **kwargs)
 
 class AdminListView(generics.ListCreateAPIView):
-    serializer_class = ProfissionalSaudeSerializer
+    serializer_class = AdminCreationSerializer  # Usar o novo serializer
     permission_classes = [permissions.IsAuthenticated, RoleRequired]
     required_roles = 'admin'
     
@@ -237,35 +238,30 @@ class AdminListView(generics.ListCreateAPIView):
         responses={200: ProfissionalSaudeSerializer(many=True)}
     )
     def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
+        # Usar o serializer de listagem para resposta
+        queryset = self.get_queryset()
+        serializer = ProfissionalSaudeSerializer(queryset, many=True)
+        return Response(serializer.data)
     
     @swagger_auto_schema(
         operation_summary="Criar novo administrador",
         operation_description="Cria um novo usuário com perfil de administrador. Apenas administradores podem executar esta ação.",
-        request_body=ProfissionalSaudeSerializer,
+        request_body=AdminCreationSerializer,
         responses={201: ProfissionalSaudeSerializer}
     )
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
     
-    def get_queryset(self):
-        return ProfissionalSaude.objects.filter(role='admin')
-    
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        # Crie o usuário incluindo o CPF
-        user = ProfissionalSaude.objects.create_user(
-            username=serializer.validated_data['username'],
-            email=serializer.validated_data['email'],
-            password=serializer.validated_data['password'],
-            cpf=serializer.validated_data['cpf'],  # Adicionado
-            full_name=serializer.validated_data['full_name'],
-            role='admin'
-        )
+        # Criar o usuário
+        user = serializer.save()
         
         Registro.criar_registro(request.user, f'CRIAR_ADMIN:{user.id}', request, success=True)
+        
+        # Retornar resposta com serializer de visualização
         response_serializer = ProfissionalSaudeSerializer(user)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
     

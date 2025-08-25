@@ -9,3 +9,36 @@ venv/
 
 # Ignora arquivo de atributos do Git
 .gitattributes
+
+# Ignora banco de dados SQLite
+db.sqlite3
+*.sqlite3
+
+# Ignora arquivos de migração do Django (exceto o __init__.py)
+*/migrations/*.py
+!*/migrations/__init__.py
+
+# Ignora arquivos de migração específicos do Django
+*.pyc
+migrations/__pycache__/
+
+# Ignora arquivos de ambiente
+.env
+.env.local
+.env.production
+
+# Ignora arquivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignora arquivos de log
+*.log
+logs/
+
+# Ignora arquivos de mídia e estáticos (em desenvolvimento)
+media/
+staticfiles/
+uploads/
+upload/

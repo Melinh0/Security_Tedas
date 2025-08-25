@@ -1,3 +1,4 @@
+# api/serializers.py
 from rest_framework import serializers
 from .models import ProfissionalSaude, Registro, Paciente, FatiaTomografia
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -16,8 +17,14 @@ class ProfissionalSaudeSerializer(serializers.ModelSerializer):
         style={'input_type': 'password'},
         help_text="Senha do usuário (mínimo 8 caracteres)"
     )
+    cpf = serializers.CharField(
+        required=True,
+        write_only=True,
+        help_text="CPF do usuário (apenas números)"
+    )
     role = serializers.ChoiceField(
         choices=USER_ROLE_CHOICES,
+        required=True,
         help_text="Papel do usuário"
     )
     professional_type = serializers.ChoiceField(
@@ -25,11 +32,6 @@ class ProfissionalSaudeSerializer(serializers.ModelSerializer):
         required=False,
         allow_blank=True,
         help_text="Tipo de profissional (apenas para profissionais da saúde)"
-    )
-    cpf = serializers.CharField(
-        required=True,
-        write_only=True,  # Opcional: depende se você quer retornar o CPF após criação
-        help_text="CPF do usuário (apenas números)"
     )
     
     class Meta:
@@ -40,31 +42,59 @@ class ProfissionalSaudeSerializer(serializers.ModelSerializer):
             'date_joined', 'last_modified'
         ]
         extra_kwargs = {
-            'password': {'write_only': True},
-            'cpf': {
-                'help_text': "CPF do usuário (apenas números)"
-            },
-            'full_name': {
-                'help_text': "Nome completo do usuário"
-            },
-            'date_joined': {
-                'help_text': "Data de cadastro do usuário"
-            },
-            'last_modified': {
-                'help_text': "Última atualização dos dados do usuário"
-            }
+            'username': {'required': True},
+            'email': {'required': True},
+            'full_name': {'required': True},
         }
     
     def create(self, validated_data):
-        cpf = validated_data.pop('cpf', None)
-        user = super().create(validated_data)
-        if cpf:
-            user.cpf = cpf  # Usa o setter para criptografia
-            user.save()
+        cpf = validated_data.pop('cpf')
+        password = validated_data.pop('password')
+        user = ProfissionalSaude.objects.create_user(
+            **validated_data,
+            password=password
+        )
+        user.cpf = cpf
+        user.save()
+        return user
+
+class AdminCreationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(
+        write_only=True,
+        required=True,
+        style={'input_type': 'password'},
+        help_text="Senha do administrador (mínimo 8 caracteres)"
+    )
+    cpf = serializers.CharField(
+        required=True,
+        write_only=True,
+        help_text="CPF do administrador (apenas números)"
+    )
+    
+    class Meta:
+        model = ProfissionalSaude
+        fields = ['username', 'email', 'cpf', 'full_name', 'password']
+        extra_kwargs = {
+            'username': {'required': True},
+            'email': {'required': True},
+            'full_name': {'required': True},
+        }
+    
+    def create(self, validated_data):
+        cpf = validated_data.pop('cpf')
+        password = validated_data.pop('password')
+        user = ProfissionalSaude.objects.create_user(
+            **validated_data,
+            password=password,
+            role='admin'
+        )
+        user.cpf = cpf
+        user.save()
         return user
 
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField(
+        required=True,
         help_text="Email do usuário para redefinição de senha"
     )
     reset_token = serializers.CharField(
@@ -117,11 +147,19 @@ class RegistroSerializer(serializers.ModelSerializer):
         return obj.profissional.email if obj.profissional else ""
     
 class PacienteSerializer(serializers.ModelSerializer):
-    medical_info = serializers.CharField(write_only=True, required=False)
-
+    medical_info = serializers.CharField(
+        write_only=True, 
+        required=False,
+        help_text="Informações médicas do paciente"
+    )
+    
     class Meta:
         model = Paciente
         fields = '__all__'
+        extra_kwargs = {
+            'full_name': {'required': True},
+            'birth_date': {'required': True},
+        }
 
 class FatiaTomografiaSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source='paciente.full_name', read_only=True)
@@ -142,6 +180,7 @@ class FatiaTomografiaSerializer(serializers.ModelSerializer):
             'dicom_url', 'dicom_file', 'segmentation_path', 'mask_path'
         ]
         extra_kwargs = {
+            'paciente': {'required': True},
             'segmentation_path': {
                 'help_text': "Caminho para arquivo de segmentação"
             },
