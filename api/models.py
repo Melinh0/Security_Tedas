@@ -5,7 +5,6 @@ from django.utils import timezone
 import secrets
 from django.core.mail import send_mail
 from django.conf import settings
-import os
 import hashlib
 import base64
 import logging

@@ -1,6 +1,5 @@
-# api/serializers.py
 from rest_framework import serializers
-from .models import ProfissionalSaude, Registro, Paciente, FatiaTomografia
+from .models import ProfissionalSaude, Paciente, FatiaTomografia, Registro
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import USER_ROLE_CHOICES, PROFESSIONAL_TYPE_CHOICES
 
@@ -25,13 +24,15 @@ class ProfissionalSaudeSerializer(serializers.ModelSerializer):
     role = serializers.ChoiceField(
         choices=USER_ROLE_CHOICES,
         required=True,
-        help_text="Papel do usuário"
+        help_text="Papel do usuário",
+        style={'base_template': 'select.html'}
     )
     professional_type = serializers.ChoiceField(
         choices=PROFESSIONAL_TYPE_CHOICES,
         required=False,
         allow_blank=True,
-        help_text="Tipo de profissional (apenas para profissionais da saúde)"
+        help_text="Tipo de profissional (apenas para profissionais da saúde)",
+        style={'base_template': 'select.html'}
     )
     
     class Meta:
@@ -119,33 +120,13 @@ class RegistroSerializer(serializers.ModelSerializer):
     class Meta:
         model = Registro
         fields = ['id', 'profissional', 'action', 'timestamp', 'username', 'email', 'ip_address', 'success']
-        extra_kwargs = {
-            'action': {
-                'help_text': "Ação registrada no log (ex: LOGIN, UPLOAD, RESET_SENHA)"
-            },
-            'timestamp': {
-                'help_text': "Data e hora do registro no formato ISO 8601"
-            },
-            'username': {
-                'help_text': "Nome do usuário que realizou a ação"
-            },
-            'email': {
-                'help_text': "Email do usuário que realizou a ação"
-            },
-            'ip_address': {
-                'help_text': "Endereço IP do usuário durante a ação"
-            },
-            'success': {
-                'help_text': "Indica se a ação foi bem sucedida"
-            }
-        }
     
     def get_username(self, obj):
         return obj.profissional.username if obj.profissional else "Usuário deletado"
     
     def get_email(self, obj):
         return obj.profissional.email if obj.profissional else ""
-    
+
 class PacienteSerializer(serializers.ModelSerializer):
     medical_info = serializers.CharField(
         write_only=True, 
@@ -166,41 +147,45 @@ class FatiaTomografiaSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='profissional.full_name', read_only=True)
     dicom_url = serializers.SerializerMethodField()
     dicom_file = serializers.FileField(
-        required=True,
+        required=False,
         write_only=True,
         help_text="Arquivo DICOM a ser enviado",
         style={'base_template': 'file.html', 'input_type': 'file'}
     )
-    
+    status = serializers.ChoiceField(
+        choices=FatiaTomografia.STATUS_CHOICES,
+        required=False,
+        help_text="Status do exame",
+        style={'base_template': 'select.html'}
+    )
+    paciente_id = serializers.PrimaryKeyRelatedField(
+        queryset=Paciente.objects.all(),
+        source='paciente',
+        write_only=True,
+        help_text="ID do paciente"
+    )
+    medical_notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Notas médicas"
+    )
+
     class Meta:
         model = FatiaTomografia
         fields = [
-            'id', 'paciente', 'patient_name', 'profissional', 'user_name', 
+            'id', 'paciente_id', 'patient_name', 'profissional', 'user_name', 
             'status', 'uploaded_at', 'updated_at', 'medical_notes',
             'dicom_url', 'dicom_file', 'segmentation_path', 'mask_path'
         ]
         extra_kwargs = {
-            'paciente': {'required': True},
-            'segmentation_path': {
-                'help_text': "Caminho para arquivo de segmentação"
-            },
-            'mask_path': {
-                'help_text': "Caminho para arquivo de máscara"
-            },
-            'uploaded_at': {
-                'help_text': "Data de envio do exame"
-            },
-            'updated_at': {
-                'help_text': "Última atualização do exame"
-            }
+            'profissional': {'read_only': True},
+            'segmentation_path': {'help_text': "Caminho para arquivo de segmentação"},
+            'mask_path': {'help_text': "Caminho para arquivo de máscara"},
+            'uploaded_at': {'help_text': "Data de envio do exame"},
+            'updated_at': {'help_text': "Última atualização do exame"}
         }
     
     def get_dicom_url(self, obj):
         if obj.original_dicom:
             return obj.original_dicom.url
         return None
-    
-    def validate_dicom_file(self, value):
-        if not value.name.lower().endswith(('.dcm', '.dicom')):
-            raise serializers.ValidationError("Apenas arquivos DICOM são permitidos")
-        return value

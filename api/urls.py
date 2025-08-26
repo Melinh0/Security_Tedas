@@ -1,4 +1,3 @@
-#api/urls.py
 from django.urls import path
 from .views import (
     LoginView,
@@ -20,9 +19,9 @@ urlpatterns = [
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
     path('reset-password/', ResetPasswordView.as_view(), name='reset_password'),
     
-    path('profissionalsaude/', UserListView.as_view(), name='user-list'),
-    path('profissionalsaude/<pk>/', UserDetailView.as_view(), name='user-detail'),
-    path('profissionalsaude/me/', UserDetailView.as_view(), name='user-me'),
+    path('profissional-saude/', UserListView.as_view(), name='user-list'),
+    path('profissional-saude/<pk>/', UserDetailView.as_view(), name='user-detail'),
+    path('profissional-saude/me/', UserDetailView.as_view(), name='user-me'),
     
     path('admins/', AdminListView.as_view(), name='admin-list'),
     path('admins/<pk>/', AdminDetailView.as_view(), name='admin-detail'),
@@ -32,6 +31,6 @@ urlpatterns = [
     
     path('pacientes/', PacienteListView.as_view(), name='paciente-list'),
     path('pacientes/<int:pk>/', PacienteDetailView.as_view(), name='paciente-detail'),
-    path('fatias_tomografia/', FatiaTomografiaListView.as_view(), name='fatiatomografia-list'),
-    path('fatias_tomografia/<int:pk>/', FatiaTomografiaDetailView.as_view(), name='fatiatomografia-detail'),
+    path('fatias-tomografia/', FatiaTomografiaListView.as_view(), name='fatiatomografia-list'),
+    path('fatias-tomografia/<int:pk>/', FatiaTomografiaDetailView.as_view(), name='fatiatomografia-detail'),
 ]

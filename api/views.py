@@ -1,13 +1,13 @@
-#api/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, generics, permissions
 from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework.parsers import MultiPartParser
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.utils import timezone
 from .models import Registro, Paciente, FatiaTomografia
+from .models import USER_ROLE_CHOICES, PROFESSIONAL_TYPE_CHOICES
 from .serializers import (
     CustomTokenObtainPairSerializer, 
     ProfissionalSaudeSerializer, 
@@ -31,6 +31,7 @@ ProfissionalSaude = get_user_model()
 
 class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+    parser_classes = [MultiPartParser, FormParser]
     
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -40,6 +41,14 @@ class LoginView(TokenObtainPairView):
     @swagger_auto_schema(
         operation_summary="Autenticar usuário",
         operation_description="Autentica um usuário com base nas credenciais fornecidas e retorna tokens de acesso.",
+        manual_parameters=[
+            openapi.Parameter(
+                'username', openapi.IN_FORM, type=openapi.TYPE_STRING, required=True
+            ),
+            openapi.Parameter(
+                'password', openapi.IN_FORM, type=openapi.TYPE_STRING, required=True, format='password'
+            )
+        ],
         responses={
             200: openapi.Response(
                 description="Autenticação bem-sucedida",
@@ -56,10 +65,16 @@ class LoginView(TokenObtainPairView):
         return response
 
 class ForgotPasswordView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
     @swagger_auto_schema(
         operation_summary="Solicitar redefinição de senha",
         operation_description="Solicita a redefinição de senha para o email fornecido. Um token será enviado para o email do usuário.",
-        request_body=PasswordResetSerializer,
+        manual_parameters=[
+            openapi.Parameter(
+                'email', openapi.IN_FORM, type=openapi.TYPE_STRING, format='email', required=True
+            )
+        ],
         responses={
             200: openapi.Response(
                 description="Solicitação processada",
@@ -88,10 +103,22 @@ class ForgotPasswordView(APIView):
             return Response({"message": "Erro no servidor de email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ResetPasswordView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
     @swagger_auto_schema(
         operation_summary="Redefinir senha",
         operation_description="Redefine a senha do usuário usando o token recebido por email.",
-        request_body=PasswordResetSerializer,
+        manual_parameters=[
+            openapi.Parameter(
+                'email', openapi.IN_FORM, type=openapi.TYPE_STRING, format='email', required=True
+            ),
+            openapi.Parameter(
+                'reset_token', openapi.IN_FORM, type=openapi.TYPE_STRING, required=True
+            ),
+            openapi.Parameter(
+                'new_password', openapi.IN_FORM, type=openapi.TYPE_STRING, format='password', required=True
+            )
+        ],
         responses={
             200: openapi.Response(
                 description="Senha redefinida com sucesso",
@@ -135,6 +162,7 @@ class UserListView(generics.ListCreateAPIView):
     serializer_class = ProfissionalSaudeSerializer
     permission_classes = [permissions.IsAuthenticated, RoleRequired]
     required_roles = 'admin'
+    parser_classes = [MultiPartParser, FormParser]
     
     def get_queryset(self):
         if self.request.user.role == 'admin':
@@ -159,7 +187,16 @@ class UserListView(generics.ListCreateAPIView):
     @swagger_auto_schema(
         operation_summary="Criar novo usuário",
         operation_description="Cria um novo usuário no sistema. Apenas administradores podem executar esta ação.",
-        request_body=ProfissionalSaudeSerializer,
+        manual_parameters=[
+            openapi.Parameter('username', openapi.IN_FORM, type=openapi.TYPE_STRING, required=True),
+            openapi.Parameter('email', openapi.IN_FORM, type=openapi.TYPE_STRING, format='email', required=True),
+            openapi.Parameter('cpf', openapi.IN_FORM, type=openapi.TYPE_STRING, required=True),
+            openapi.Parameter('full_name', openapi.IN_FORM, type=openapi.TYPE_STRING, required=True),
+            openapi.Parameter('password', openapi.IN_FORM, type=openapi.TYPE_STRING, format='password', required=True),
+            openapi.Parameter('role', openapi.IN_FORM, type=openapi.TYPE_STRING, enum=[r[0] for r in USER_ROLE_CHOICES], required=True),
+            openapi.Parameter('professional_type', openapi.IN_FORM, type=openapi.TYPE_STRING, 
+                            enum=[p[0] for p in PROFESSIONAL_TYPE_CHOICES], required=False),
+        ],
         responses={201: ProfissionalSaudeSerializer}
     )
     def post(self, request, *args, **kwargs):
@@ -169,6 +206,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProfissionalSaudeSerializer
     permission_classes = [permissions.IsAuthenticated, RoleRequired]
     required_roles = 'admin'
+    parser_classes = [MultiPartParser, FormParser]
     
     def get_queryset(self):
         return ProfissionalSaude.objects.all()
@@ -210,7 +248,17 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     @swagger_auto_schema(
         operation_summary="Atualizar usuário",
         operation_description="Atualiza as informações de um usuário existente. Apenas administradores podem executar esta ação.",
-        request_body=ProfissionalSaudeSerializer,
+        manual_parameters=[
+            openapi.Parameter('username', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+            openapi.Parameter('email', openapi.IN_FORM, type=openapi.TYPE_STRING, format='email', required=False),
+            openapi.Parameter('cpf', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+            openapi.Parameter('full_name', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+            openapi.Parameter('password', openapi.IN_FORM, type=openapi.TYPE_STRING, format='password', required=False),
+            openapi.Parameter('role', openapi.IN_FORM, type=openapi.TYPE_STRING, 
+                            enum=[r[0] for r in USER_ROLE_CHOICES], required=False),
+            openapi.Parameter('professional_type', openapi.IN_FORM, type=openapi.TYPE_STRING, 
+                            enum=[p[0] for p in PROFESSIONAL_TYPE_CHOICES], required=False),
+        ],
         responses={200: ProfissionalSaudeSerializer}
     )
     def put(self, request, *args, **kwargs):
@@ -225,9 +273,10 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         return super().delete(request, *args, **kwargs)
 
 class AdminListView(generics.ListCreateAPIView):
-    serializer_class = AdminCreationSerializer  # Usar o novo serializer
+    serializer_class = AdminCreationSerializer
     permission_classes = [permissions.IsAuthenticated, RoleRequired]
     required_roles = 'admin'
+    parser_classes = [MultiPartParser, FormParser]
     
     def get_queryset(self):
         return ProfissionalSaude.objects.filter(role='admin')
@@ -238,7 +287,6 @@ class AdminListView(generics.ListCreateAPIView):
         responses={200: ProfissionalSaudeSerializer(many=True)}
     )
     def get(self, request, *args, **kwargs):
-        # Usar o serializer de listagem para resposta
         queryset = self.get_queryset()
         serializer = ProfissionalSaudeSerializer(queryset, many=True)
         return Response(serializer.data)
@@ -246,7 +294,13 @@ class AdminListView(generics.ListCreateAPIView):
     @swagger_auto_schema(
         operation_summary="Criar novo administrador",
         operation_description="Cria um novo usuário com perfil de administrador. Apenas administradores podem executar esta ação.",
-        request_body=AdminCreationSerializer,
+        manual_parameters=[
+            openapi.Parameter('username', openapi.IN_FORM, type=openapi.TYPE_STRING, required=True),
+            openapi.Parameter('email', openapi.IN_FORM, type=openapi.TYPE_STRING, format='email', required=True),
+            openapi.Parameter('cpf', openapi.IN_FORM, type=openapi.TYPE_STRING, required=True),
+            openapi.Parameter('full_name', openapi.IN_FORM, type=openapi.TYPE_STRING, required=True),
+            openapi.Parameter('password', openapi.IN_FORM, type=openapi.TYPE_STRING, format='password', required=True),
+        ],
         responses={201: ProfissionalSaudeSerializer}
     )
     def post(self, request, *args, **kwargs):
@@ -256,12 +310,9 @@ class AdminListView(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        # Criar o usuário
         user = serializer.save()
-        
         Registro.criar_registro(request.user, f'CRIAR_ADMIN:{user.id}', request, success=True)
         
-        # Retornar resposta com serializer de visualização
         response_serializer = ProfissionalSaudeSerializer(user)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
     
@@ -269,6 +320,7 @@ class AdminDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProfissionalSaudeSerializer
     permission_classes = [permissions.IsAuthenticated, RoleRequired]
     required_roles = 'admin'
+    parser_classes = [MultiPartParser, FormParser]
     
     def get_queryset(self):
         return ProfissionalSaude.objects.filter(role='admin')
@@ -289,7 +341,13 @@ class AdminDetailView(generics.RetrieveUpdateDestroyAPIView):
     @swagger_auto_schema(
         operation_summary="Atualizar administrador",
         operation_description="Atualiza as informações de um administrador existente. Apenas administradores podem executar esta ação.",
-        request_body=ProfissionalSaudeSerializer,
+        manual_parameters=[
+            openapi.Parameter('username', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+            openapi.Parameter('email', openapi.IN_FORM, type=openapi.TYPE_STRING, format='email', required=False),
+            openapi.Parameter('cpf', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+            openapi.Parameter('full_name', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+            openapi.Parameter('password', openapi.IN_FORM, type=openapi.TYPE_STRING, format='password', required=False),
+        ],
         responses={200: ProfissionalSaudeSerializer}
     )
     def put(self, request, *args, **kwargs):
@@ -345,6 +403,7 @@ class PacienteListView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated, RoleRequired]
     required_roles = ['admin', 'health_professional']
     queryset = Paciente.objects.all()
+    parser_classes = [MultiPartParser, FormParser]
 
     @swagger_auto_schema(
         operation_summary="Listar pacientes",
@@ -357,7 +416,11 @@ class PacienteListView(generics.ListCreateAPIView):
     @swagger_auto_schema(
         operation_summary="Criar novo paciente",
         operation_description="Cria um novo registro de paciente. Acesso para administradores e profissionais de saúde.",
-        request_body=PacienteSerializer,
+        manual_parameters=[
+            openapi.Parameter('full_name', openapi.IN_FORM, type=openapi.TYPE_STRING, required=True),
+            openapi.Parameter('birth_date', openapi.IN_FORM, type=openapi.TYPE_STRING, format='date', required=True),
+            openapi.Parameter('medical_info', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+        ],
         responses={201: PacienteSerializer}
     )
     def post(self, request, *args, **kwargs):
@@ -368,6 +431,7 @@ class PacienteDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated, RoleRequired]
     required_roles = ['admin', 'health_professional']
     queryset = Paciente.objects.all()
+    parser_classes = [MultiPartParser, FormParser]
 
     @swagger_auto_schema(
         operation_summary="Detalhes do paciente",
@@ -380,7 +444,11 @@ class PacienteDetailView(generics.RetrieveUpdateDestroyAPIView):
     @swagger_auto_schema(
         operation_summary="Atualizar paciente",
         operation_description="Atualiza as informações de um paciente existente.",
-        request_body=PacienteSerializer,
+        manual_parameters=[
+            openapi.Parameter('full_name', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+            openapi.Parameter('birth_date', openapi.IN_FORM, type=openapi.TYPE_STRING, format='date', required=False),
+            openapi.Parameter('medical_info', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+        ],
         responses={200: PacienteSerializer}
     )
     def put(self, request, *args, **kwargs):
@@ -397,7 +465,7 @@ class PacienteDetailView(generics.RetrieveUpdateDestroyAPIView):
 class FatiaTomografiaListView(generics.ListCreateAPIView):
     serializer_class = FatiaTomografiaSerializer
     permission_classes = [permissions.IsAuthenticated, RoleRequired]
-    parser_classes = [MultiPartParser]  # Aceita upload de arquivos
+    parser_classes = [MultiPartParser, FormParser]
     
     def get_required_roles(self):
         if self.request.method == 'POST':
@@ -418,10 +486,7 @@ class FatiaTomografiaListView(generics.ListCreateAPIView):
     @swagger_auto_schema(
         operation_summary="Listar fatias de tomografia",
         operation_description=(
-            "Lista fatias de tomografia de acordo com o perfil do usuário:\n"
-            "- Administradores: Todos os exames\n"
-            "- Profissionais de saúde: Apenas seus próprios exames\n"
-            "- Pesquisadores: Apenas exames anonimizados (segmented)"
+            "Lista fatias de tomografia de acordo com o perfil do usuário"
         ),
         responses={200: FatiaTomografiaSerializer(many=True)}
     )
@@ -430,16 +495,12 @@ class FatiaTomografiaListView(generics.ListCreateAPIView):
 
     @swagger_auto_schema(
         operation_summary="Criar nova fatia de tomografia",
-        operation_description=(
-            "Cria uma nova fatia de tomografia com upload de arquivo DICOM\n\n"
-            "**Campos obrigatórios:**\n"
-            "- `paciente`: ID do paciente associado\n"
-            "- `dicom_file`: Arquivo DICOM a ser enviado\n\n"
-            "**Campos opcionais:**\n"
-            "- `medical_notes`: Notas médicas sobre o exame\n"
-            "- `status`: Status inicial do exame (padrão: 'uploaded')"
-        ),
-        request_body=FatiaTomografiaSerializer,
+        operation_description=("Cria uma nova fatia de tomografia com upload de arquivo DICOM"),
+        manual_parameters=[
+            openapi.Parameter('paciente_id', openapi.IN_FORM, type=openapi.TYPE_INTEGER, required=True),
+            openapi.Parameter('dicom_file', openapi.IN_FORM, type=openapi.TYPE_FILE, required=True),
+            openapi.Parameter('medical_notes', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+        ],
         responses={
             201: FatiaTomografiaSerializer,
             400: "Erro de validação",
@@ -450,11 +511,18 @@ class FatiaTomografiaListView(generics.ListCreateAPIView):
         return self.create(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        # Adicionar o profissional automaticamente
+        data = request.data.copy()
+        data['profissional'] = request.user.id
+        
+        serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         
         # Verificação de segurança do arquivo
-        dicom_file = serializer.validated_data['dicom_file']
+        dicom_file = serializer.validated_data.get('dicom_file')
+        if not dicom_file:
+            return Response({"message": "Arquivo DICOM é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
+        
         temp_file = None
         
         try:
@@ -472,16 +540,7 @@ class FatiaTomografiaListView(generics.ListCreateAPIView):
                 raise ValidationError("Tipo de arquivo inválido. Apenas DICOM é permitido")
             
             # Criar o exame
-            fatia_tomografia = FatiaTomografia(
-                paciente=serializer.validated_data['paciente'],
-                profissional=request.user,
-                status='uploaded'
-            )
-            
-            if 'medical_notes' in serializer.validated_data:
-                fatia_tomografia.medical_notes = serializer.validated_data['medical_notes']
-            
-            fatia_tomografia.save()
+            fatia_tomografia = serializer.save(profissional=request.user)
             
             # Salvar o arquivo DICOM
             filename = f"exam_{fatia_tomografia.id}_{dicom_file.name}"
@@ -503,6 +562,7 @@ class FatiaTomografiaListView(generics.ListCreateAPIView):
 class FatiaTomografiaDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = FatiaTomografiaSerializer
     permission_classes = [permissions.IsAuthenticated, RoleRequired]
+    parser_classes = [MultiPartParser, FormParser]
     
     def get_required_roles(self):
         fatia_tomografia = self.get_object()
@@ -521,13 +581,7 @@ class FatiaTomografiaDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     @swagger_auto_schema(
         operation_summary="Detalhes da fatia de tomografia",
-        operation_description=(
-            "Obtém detalhes de uma fatia de tomografia específica pelo ID.\n"
-            "Permissões:\n"
-            "- Administradores: Acesso completo\n"
-            "- Profissional de saúde: Apenas seus próprios exames\n"
-            "- Pesquisadores: Apenas exames anonimizados"
-        ),
+        operation_description=("Obtém detalhes de uma fatia de tomografia específica pelo ID."),
         responses={200: FatiaTomografiaSerializer}
     )
     def get(self, request, *args, **kwargs):
@@ -535,12 +589,13 @@ class FatiaTomografiaDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     @swagger_auto_schema(
         operation_summary="Atualizar fatia de tomografia",
-        operation_description=(
-            "Atualiza as informações de uma fatia de tomografia existente.\n"
-            "Permissões:\n"
-            "- Apenas administradores ou o profissional de saúde que criou o exame"
-        ),
-        request_body=FatiaTomografiaSerializer,
+        operation_description=("Atualiza as informações de uma fatia de tomografia existente."),
+        manual_parameters=[
+            openapi.Parameter('paciente_id', openapi.IN_FORM, type=openapi.TYPE_INTEGER, required=False),
+            openapi.Parameter('medical_notes', openapi.IN_FORM, type=openapi.TYPE_STRING, required=False),
+            openapi.Parameter('status', openapi.IN_FORM, type=openapi.TYPE_STRING, 
+                            enum=[s[0] for s in FatiaTomografia.STATUS_CHOICES], required=False),
+        ],
         responses={200: FatiaTomografiaSerializer}
     )
     def put(self, request, *args, **kwargs):
@@ -548,11 +603,7 @@ class FatiaTomografiaDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     @swagger_auto_schema(
         operation_summary="Excluir fatia de tomografia",
-        operation_description=(
-            "Exclui permanentemente um registro de fatia de tomografia.\n"
-            "Permissões:\n"
-            "- Apenas administradores ou o profissional de saúde que criou o exame"
-        ),
+        operation_description=("Exclui permanentemente um registro de fatia de tomografia."),
         responses={204: "Fatia de tomografia excluída com sucesso"}
     )
     def delete(self, request, *args, **kwargs):

@@ -25,13 +25,28 @@ class ProfissionalSaudeAdmin(UserAdmin):
         (None, {
             'classes': ('wide',),
             'fields': ('username', 'email', 'full_name', 'password1', 'password2', 
-                       'role', 'professional_type'),
+                       'role', 'professional_type', '_cpf'),
         }),
     )
     search_fields = ('email', 'username', 'full_name')
     ordering = ('full_name',)
 
+class PacienteAdmin(admin.ModelAdmin):
+    list_display = ['full_name', 'birth_date', 'created_at']
+    search_fields = ['full_name']
+    list_filter = ['created_at']
+
+class FatiaTomografiaAdmin(admin.ModelAdmin):
+    list_display = ['id', 'paciente', 'profissional', 'status', 'uploaded_at']
+    list_filter = ['status', 'uploaded_at']
+    search_fields = ['paciente__full_name']
+
+class RegistroAdmin(admin.ModelAdmin):
+    list_display = ['profissional', 'action', 'timestamp', 'success']
+    list_filter = ['action', 'success', 'timestamp']
+    readonly_fields = ['timestamp']
+
 admin.site.register(ProfissionalSaude, ProfissionalSaudeAdmin)
-admin.site.register(Registro)
-admin.site.register(Paciente)
-admin.site.register(FatiaTomografia)
+admin.site.register(Registro, RegistroAdmin)
+admin.site.register(Paciente, PacienteAdmin)
+admin.site.register(FatiaTomografia, FatiaTomografiaAdmin)
