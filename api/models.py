@@ -1,22 +1,16 @@
-#api/models.py
+# api/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
 import secrets
 from django.core.mail import send_mail
-from django.conf import settings
 import hashlib
 import base64
 import logging
 from cryptography.fernet import Fernet
-from .utils import encrypt_file, decrypt_file
 
 # Configure o logger
 logger = logging.getLogger(__name__)
-
-# Função para gerar chave de criptografia
-def get_encryption_key():
-    return hashlib.sha256(settings.SECRET_KEY.encode()).digest()[:32]
 
 # Adicione estas escolhas no topo do arquivo
 USER_ROLE_CHOICES = (
@@ -31,6 +25,12 @@ PROFESSIONAL_TYPE_CHOICES = (
     ('radiologist', 'Radiologista'),
     ('other', 'Outro'),
 )
+
+# Função para gerar chave de criptografia (movida para depois das definições de classes)
+def get_encryption_key():
+    # Use uma importação local para evitar circularidade
+    from django.conf import settings
+    return hashlib.sha256(settings.SECRET_KEY.encode()).digest()[:32]
 
 class UserManager(BaseUserManager):
     def create_user(self, username, email, password=None, **extra_fields):
@@ -96,13 +96,15 @@ class ProfissionalSaude(AbstractBaseUser, PermissionsMixin):
     @property
     def cpf(self):
         if self._cpf:
-            fernet = Fernet(base64.urlsafe_b64encode(get_encryption_key()))
+            key = base64.urlsafe_b64encode(get_encryption_key())
+            fernet = Fernet(key)
             return fernet.decrypt(self._cpf.encode()).decode()
         return None
     
     @cpf.setter
     def cpf(self, value):
-        fernet = Fernet(base64.urlsafe_b64encode(get_encryption_key()))
+        key = base64.urlsafe_b64encode(get_encryption_key())
+        fernet = Fernet(key)
         self._cpf = fernet.encrypt(value.encode()).decode()
 
     def set_password(self, password):
@@ -121,6 +123,8 @@ class ProfissionalSaude(AbstractBaseUser, PermissionsMixin):
         
     def send_reset_email(self):
         try:
+            # Importar settings aqui para evitar circularidade
+            from django.conf import settings
             send_mail(
                 subject="Recuperação de Senha",
                 message=f"""Para redefinir sua senha, use o seguinte token:
@@ -138,8 +142,9 @@ class ProfissionalSaude(AbstractBaseUser, PermissionsMixin):
 
 # Classe renomeada para Registro
 class Registro(models.Model):
+    # Use uma string para a referência ao modelo para evitar importação circular
     profissional = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
+        'api.ProfissionalSaude', 
         on_delete=models.SET_NULL, 
         null=True
     )
@@ -181,13 +186,15 @@ class Paciente(models.Model):
     @property
     def medical_info(self):
         if self._medical_info:
-            fernet = Fernet(base64.urlsafe_b64encode(get_encryption_key()))
+            key = base64.urlsafe_b64encode(get_encryption_key())
+            fernet = Fernet(key)
             return fernet.decrypt(self._medical_info.encode()).decode()
         return None
     
     @medical_info.setter
     def medical_info(self, value):
-        fernet = Fernet(base64.urlsafe_b64encode(get_encryption_key()))
+        key = base64.urlsafe_b64encode(get_encryption_key())
+        fernet = Fernet(key)
         self._medical_info = fernet.encrypt(value.encode()).decode()
 
 # Classe renomeada para FatiaTomografia
@@ -200,9 +207,10 @@ class FatiaTomografia(models.Model):
     )
     
     id = models.AutoField(primary_key=True)
-    paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE, related_name='fatias_tomografia')
+    # Use strings para as referências aos modelos
+    paciente = models.ForeignKey('api.Paciente', on_delete=models.CASCADE, related_name='fatias_tomografia')
     profissional = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
+        'api.ProfissionalSaude', 
         on_delete=models.SET_NULL, 
         null=True,
         related_name='fatias_tomografia'
@@ -232,13 +240,15 @@ class FatiaTomografia(models.Model):
     @property
     def medical_notes(self):
         if self._medical_notes:
-            fernet = Fernet(base64.urlsafe_b64encode(get_encryption_key()))
+            key = base64.urlsafe_b64encode(get_encryption_key())
+            fernet = Fernet(key)
             return fernet.decrypt(self._medical_notes.encode()).decode()
         return None
     
     @medical_notes.setter
     def medical_notes(self, value):
-        fernet = Fernet(base64.urlsafe_b64encode(get_encryption_key()))
+        key = base64.urlsafe_b64encode(get_encryption_key())
+        fernet = Fernet(key)
         self._medical_notes = fernet.encrypt(value.encode()).decode()
     
     def save(self, *args, **kwargs):
@@ -247,16 +257,21 @@ class FatiaTomografia(models.Model):
         
         # Criptografar arquivos após salvar
         if is_new and self.original_dicom:
+            # Importar funções aqui para evitar circularidade
+            from .utils import encrypt_file
             encrypt_file(self.original_dicom.path)
         if self.anonymized_dicom:
+            from .utils import encrypt_file
             encrypt_file(self.anonymized_dicom.path)
     
     def get_original_dicom(self):
         if self.original_dicom:
+            from .utils import decrypt_file
             return decrypt_file(self.original_dicom.path)
         return None
     
     def get_anonymized_dicom(self):
         if self.anonymized_dicom:
+            from .utils import decrypt_file
             return decrypt_file(self.anonymized_dicom.path)
         return None
