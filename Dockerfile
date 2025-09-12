@@ -1,25 +1,26 @@
-FROM python:3.10-slim-bullseye
+#Dockerfile
+FROM python:3.12-slim-bookworm
 
-# Definir variáveis de ambiente
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+# Install system dependencies - ADICIONE libmagic1 aqui
+RUN apt-get update && \
+    apt-get install -y curl vim libpq-dev gcc python3-dev netcat-traditional libmagic1 && \
+    apt-get clean
 
-# Criar diretório de trabalho
 WORKDIR /app
 
-# Instalar dependências do sistema
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libpq-dev \
-    libmagic1 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Instalar dependências do Python
+# Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar projeto
+# Copy project files
 COPY . .
 
-# Expor porta
+# Create and set entrypoint
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+ENTRYPOINT ["/app/entrypoint.sh"]
+
 EXPOSE 8000
+
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

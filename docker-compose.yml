@@ -1,8 +1,9 @@
+#docker-compose.yml
 version: '3.8'
 
 services:
   db:
-    image: postgres:16  # Change from postgres:13 to postgres:16
+    image: postgres:16
     environment:
       POSTGRES_DB: security_api
       POSTGRES_USER: postgres
@@ -19,7 +20,6 @@ services:
 
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
     ports:
@@ -30,6 +30,8 @@ services:
       - DB_PASSWORD=postgres
       - DB_HOST=db
       - DB_PORT=5432
+      - SECRET_KEY=sua-chave-secreta-aqui
+      - DEBUG=True
     depends_on:
       db:
         condition: service_healthy
