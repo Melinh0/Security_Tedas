@@ -1,4 +1,3 @@
-#entrypoint.sh
 #!/bin/sh
 
 # Wait for database to be ready
