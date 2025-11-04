@@ -1,9 +1,9 @@
-#security_api/urls.py
 from django.contrib import admin
 from django.urls import path, include
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import permissions
+from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -15,7 +15,7 @@ schema_view = get_schema_view(
       <h2>API para Gerenciamento de Segurança em Imagens de Fatias de Tomografia</h2>
       <p>Esta API fornece um sistema completo para:</p>
       <ul>
-        <li><b>Autenticação de usuários</b> com tokens JWT</li>
+        <li><b>Autenticação de usuários</b> com Basic Authentication e tokens JWT</li>
         <li><b>Gerenciamento de usuários</b> com três níveis de acesso (Administrador, Profissional de Saúde, Pesquisador)</li>
         <li><b>Recuperação segura de senhas</b> via email</li>
         <li><b>Upload e gestão de exames DICOM</b> com controle de acesso e criptografia</li>
@@ -23,13 +23,24 @@ schema_view = get_schema_view(
         <li><b>Gerenciamento de pacientes</b> com informações médicas criptografadas</li>
       </ul>
       
-      <h3>Fluxo de Autenticação</h3>
+      <h3>Fluxo de Autenticação Simplificado</h3>
       <ol>
-        <li>Faça login em <code>/api/login/</code> para obter tokens de acesso</li>
-        <li>Use o token no formato: <code>Authorization: Bearer &lt;token&gt;</code></li>
-        <li>Tokens de acesso expiram em 1 hora - use o refresh token para renovar</li>
+        <li><b>Clique no botão "Authorize" no topo desta página</b></li>
+        <li><b>Insira suas credenciais:</b>
+          <ul>
+            <li>Username: seu nome de usuário (ex: admin)</li>
+            <li>Password: sua senha (ex: admin)</li>
+          </ul>
+        </li>
+        <li><b>Pronto!</b> Todas as requisições serão autenticadas automaticamente</li>
       </ol>
       
+      <h3>Métodos de Autenticação Disponíveis</h3>
+      <ul>
+        <li><b>Basic Authentication:</b> Use usuário e senha diretamente (recomendado para testes)</li>
+        <li><b>JWT Token:</b> Use tokens JWT obtidos via <code>/api/auth/login/</code></li>
+      </ul>
+
       <h3>Tipos de Usuários</h3>
       <ul>
         <li><b>Administrador:</b> Acesso completo a todos os recursos</li>
@@ -47,20 +58,34 @@ schema_view = get_schema_view(
 
       <h3>Endpoints Principais</h3>
       <ul>
-        <li><b>/api/login/</b> - Autenticação de usuários</li>
-        <li><b>/api/profissional-saude/</b> - Gerenciamento de profissionais de saúde</li>
+        <li><b>/api/auth/login/</b> - Autenticação de usuários (JWT)</li>
+        <li><b>/api/auth/forgot-password/</b> - Solicitar recuperação de senha</li>
+        <li><b>/api/auth/reset-password/</b> - Redefinir senha com token</li>
+        <li><b>/api/profissionais/</b> - Gerenciamento de profissionais de saúde</li>
+        <li><b>/api/admins/</b> - Gerenciamento de administradores</li>
         <li><b>/api/pacientes/</b> - Gerenciamento de pacientes</li>
         <li><b>/api/fatias-tomografia/</b> - Upload e gestão de exames de tomografia</li>
         <li><b>/api/registros/</b> - Visualização de registros de auditoria (apenas administradores)</li>
+      </ul>
+
+      <h3>Credenciais de Teste (Desenvolvimento)</h3>
+      <ul>
+        <li><b>Administrador:</b> username: <code>admin</code>, password: <code>admin</code></li>
+        <li><b>Pesquisador:</b> username: <code>researcher</code>, password: <code>researcher</code></li>
+        <li><b>Médico:</b> username: <code>doctor</code>, password: <code>doctor</code></li>
       </ul>
       """,
    ),
    public=True,
    permission_classes=[permissions.AllowAny],
+   authentication_classes=[BasicAuthentication, SessionAuthentication],
 )
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('api.urls')),
+    path('api/', include('accounts.urls')),
+    path('api/', include('patients.urls')),
+    path('api/', include('exams.urls')),
+    path('api/', include('audit.urls')),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
