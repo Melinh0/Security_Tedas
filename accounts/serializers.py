@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ProfissionalSaude, USER_ROLE_CHOICES, PROFESSIONAL_TYPE_CHOICES
+from .models import ProfissionalSaude
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

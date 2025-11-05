@@ -2,7 +2,6 @@ from rest_framework import generics, permissions
 from .models import Paciente
 from .serializers import PacienteSerializer
 from core.permissions import RoleRequired
-from audit.models import Registro
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.parsers import MultiPartParser, FormParser
