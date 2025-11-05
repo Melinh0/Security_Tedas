@@ -2,252 +2,237 @@
 
 ## 📋 Descrição do Projeto
 
-Esta é uma API Django REST Framework para gerenciamento seguro de usuários, pacientes e fatias de exames de tomografio da L3. O sistema inclui autenticação JWT, controle de acesso baseado em roles (RBAC), criptografia de dados sensíveis e upload seguro de arquivos DICOM.
+API Django REST Framework para gerenciamento seguro de usuários, pacientes e exames de tomografia. Sistema com autenticação JWT, controle de acesso baseado em roles (RBAC), criptografia de dados sensíveis e upload seguro de arquivos DICOM.
+
+## 🏗️ Estrutura do Projeto
+
+```
+Security_Tedas/
+├── 📁 security_api/                 # Configurações principais
+│   ├── settings.py                  # Configurações Django e REST Framework
+│   ├── urls.py                      # Rotas principais e documentação
+│   ├── middleware.py               # Middleware de segurança
+│   ├── asgi.py                     # Configuração ASGI
+│   └── wsgi.py                     # Configuração WSGI
+├── 📁 accounts/                     # App de autenticação e usuários
+│   ├── models.py                   # Modelo ProfissionalSaude
+│   ├── views.py                    # Views de autenticação
+│   ├── urls.py                     # Rotas de login/usuários
+│   ├── serializers.py              # Serializers para API
+│   ├── admin.py                    # Configuração admin
+│   ├── permissions.py              # Permissões personalizadas
+│   ├── forms.py                    # Formulários Django
+│   └── apps.py                     # Configuração do app
+├── 📁 patients/                     # App de gerenciamento de pacientes
+│   ├── models.py                   # Modelo Paciente
+│   ├── views.py                    # Views para CRUD
+│   ├── urls.py                     # Rotas de pacientes
+│   ├── serializers.py              # Serializers da API
+│   ├── admin.py                    # Interface admin
+│   └── apps.py                     # Configuração do app
+├── 📁 exams/                        # App de gerenciamento de exames
+│   ├── models.py                   # Modelo FatiaTomografia
+│   ├── views.py                    # Views para upload/download
+│   ├── urls.py                     # Rotas de exames
+│   ├── serializers.py              # Serializers
+│   ├── utils.py                    # Utilitários para processamento
+│   ├── admin.py                    # Admin interface
+│   └── apps.py                     # Configuração do app
+├── 📁 audit/                        # App de registros de auditoria
+│   ├── models.py                   # Modelo RegistroAuditoria
+│   ├── views.py                    # Views de logs
+│   ├── urls.py                     # Rotas de auditoria
+│   ├── serializers.py              # Serializers
+│   ├── admin.py                    # Interface admin
+│   └── apps.py                     # Configuração do app
+├── 📁 core/                         # Utilitários e funcionalidades centrais
+│   ├── models.py                   # Modelos base
+│   ├── views.py                    # Views base
+│   ├── utils.py                    # Utilitários gerais
+│   ├── permissions.py              # Permissões base
+│   ├── admin.py                    # Admin base
+│   └── apps.py                     # Configuração do app
+├── 📜 manage.py                     # Script de gerenciamento Django
+├── 🐳 docker-compose.yml           # Configuração Docker Compose
+├── 🐳 Dockerfile                   # Build da imagem Docker
+├── 📜 entrypoint.sh                # Script de inicialização
+├── 📜 requirements.txt             # Dependências Python
+└── 📜 README.md                    # Este arquivo
+```
 
 ## 🚀 Pré-requisitos
 
-Antes de começar, certifique-se de ter instalado em sua máquina:
-- **Docker** ([Instalação do Docker](https://docs.docker.com/get-docker/))
-- **Docker Compose** ([Instalação do Docker Compose](https://docs.docker.com/compose/install/))
-- **Git** ([Instalação do Git](https://git-scm.com/downloads))
+- **Docker** ([Instalação](https://docs.docker.com/get-docker/))
+- **Docker Compose** ([Instalação](https://docs.docker.com/compose/install/))
+- **Git** ([Instalação](https://git-scm.com/downloads))
 
-## 📥 Clonagem do Repositório
+## 📥 Clonagem e Execução
 
 ```bash
 # Clone o repositório
 git clone <URL_DO_REPOSITORIO>
 cd Security_Tedas
-```
 
-## 🐳 Execução do Projeto com Docker
-
-### Passo 1: Verifique se o Docker está rodando
-
-```bash
-# Verifique se o Docker está instalado e funcionando
-docker --version
-docker-compose --version
-
-# Se não estiver instalado, siga os links de instalação acima
-```
-
-### Passo 2: Construa e execute os containers
-
-```bash
-# Execute o comando para construir as imagens e iniciar os containers
+# Execute com Docker
 sudo docker-compose up --build
 ```
 
-**O que este comando faz:**
-- Baixa as imagens base (Python 3.12 e PostgreSQL 16)
-- Instala todas as dependências do projeto
-- Configura o banco de dados PostgreSQL
-- Executa as migrações do Django
-- Inicia o servidor Django na porta 8000
-
-### Passo 3: Aguarde a inicialização completa
-
-Você verá no terminal mensagens como:
+**Aguarde a inicialização completa:** 
 ```
-db_1   | 2025-09-12 18:19:39.881 UTC [1] LOG:  database system is ready to accept connections
-web_1  | Database started
-web_1  | Operations to perform:
-web_1  |   Apply all migrations: admin, api, auth, contenttypes, sessions
-web_1  | Running migrations:
-web_1  |   No migrations to apply.
-web_1  | Watching for file changes with StatReloader
-web_1  | Django version 5.2.3, using settings 'security_api.settings'
 web_1  | Starting development server at http://0.0.0.0:8000/
 ```
 
-**⚠️ Importante:** Aguarde até ver a mensagem "Starting development server at http://0.0.0.0:8000/" antes de prosseguir.
-
 ## 🌐 Acesso à Aplicação
 
-### 1. Documentação Interativa da API (Swagger)
-Abra seu navegador e acesse:
+### 1. Documentação da API (Swagger)
 ```
 http://localhost:8000/swagger/
 ```
 
-Aqui você pode:
-- Visualizar todos os endpoints disponíveis
-- Testar as rotas diretamente pela interface
-- Ver exemplos de requisições e respostas
-
-### 2. Painel Administrativo do Django
-Acesse o admin em:
+### 2. Painel Administrativo
 ```
 http://localhost:8000/admin/
 ```
 
 ## 👥 Usuários Pré-Cadastrados
 
-O sistema cria automaticamente 3 usuários durante a migração:
+| Usuário | Senha | Role | Permissões |
+|---------|-------|------|------------|
+| `admin` | `admin` | Administrador | Acesso completo |
+| `researcher` | `researcher` | Pesquisador | Apenas exames segmentados |
+| `doctor` | `doctor` | Profissional | Gerenciar pacientes/exames |
 
-| Usuário | Senha | Role | Descrição |
-|---------|-------|------|-----------|
-| `admin` | `admin` | Administrador | Acesso completo ao sistema |
-| `researcher` | `researcher` | Pesquisador | Acesso apenas a exames segmentados |
-| `doctor` | `doctor` | Profissional de Saúde | Pode gerenciar pacientes e exames |
+## 🔧 Módulos e Funcionalidades
 
-## 🛠️ Criando um Novo Usuário via Django Admin
+### 🔐 Accounts - Autenticação & Usuários
+- **models.py**: Modelo `ProfissionalSaude` com roles
+- **views.py**: Autenticação JWT, gerenciamento de usuários
+- **serializers.py**: Validação de dados de usuário
+- **permissions.py**: Controle de acesso por role
+- **Endpoints:**
+  - `POST /api/auth/login/` - Login com JWT
+  - `POST /api/auth/forgot-password/` - Recuperação de senha
+  - `POST /api/auth/reset-password/` - Redefinir senha
+  - `GET /api/profissionais/` - Listar profissionais
 
-### Passo 1: Faça login no Django Admin
-- Acesse: `http://localhost:8000/admin/`
-- Use as credenciais: **usuário:** `admin`, **senha:** `admin`
+### 🏥 Patients - Gestão de Pacientes
+- **models.py**: Modelo `Paciente` com dados criptografados
+- **views.py**: CRUD completo de pacientes
+- **serializers.py**: Serialização segura de dados sensíveis
+- **Endpoints:**
+  - `GET/POST /api/pacientes/` - Listar/criar pacientes
+  - `GET/PUT/DELETE /api/pacientes/{id}/` - Operações específicas
 
-### Passo 2: Navegue até a seção de usuários
-- No menu lateral, clique em **"Profissional saudes"**
-- Clique no botão **"ADICIONAR PROFISSIONAL SAUDE"** no canto superior direito
+### 📊 Exams - Gestão de Exames DICOM
+- **models.py**: Modelo `FatiaTomografia` para upload de exames
+- **views.py**: Upload, download e processamento de exames
+- **utils.py**: Utilitários para processamento DICOM
+- **Endpoints:**
+  - `POST /api/fatias-tomografia/` - Upload de exames
+  - `GET /api/fatias-tomografia/` - Listar exames
+  - `GET /api/fatias-tomografia/{id}/download/` - Download seguro
 
-### Passo 3: Preencha os dados do usuário
+### 📝 Audit - Auditoria e Logs
+- **models.py**: Modelo `RegistroAuditoria` para logs
+- **views.py**: Consulta de registros de auditoria
+- **Endpoints:**
+  - `GET /api/registros/` - Listar registros (apenas admin)
 
-**Campos obrigatórios:**
-- **Nome de usuário:** Escolha um username único
-- **Senha:** Digite uma senha forte (mínimo 8 caracteres)
-- **Confirmação de senha:** Repita a senha
-- **Endereço de email:** Email válido do usuário
-- **Nome completo:** Nome completo do profissional
-- **CPF:** Apenas números (será criptografado automaticamente)
-- **Papel:** Escolha entre Admin, Pesquisador ou Profissional da Saúde
+### ⚙️ Core - Funcionalidades Centrais
+- **utils.py**: Utilitários gerais e helpers
+- **permissions.py**: Permissões base reutilizáveis
 
-**Campos condicionais:**
-- Se escolher "Profissional da Saúde", selecione o **Tipo profissional** (Médico, Nutricionista, etc.)
+## 🛡️ Funcionalidades de Segurança
 
-### Passo 4: Salve o usuário
-- Clique em **"SALVAR"** para criar o usuário
-- O novo usuário já estará disponível para login
+- **🔐 Autenticação JWT** com tempo de expiração configurável
+- **👥 RBAC (Role-Based Access Control)** com 3 níveis de acesso
+- **🔒 Criptografia AES-256** para dados sensíveis (CPF, informações médicas)
+- **📁 Validação de arquivos** por tipo MIME para arquivos DICOM
+- **📊 Auditoria completa** de todas as operações do sistema
+- **📧 Recuperação segura** de senha via token por email
+- **🛡️ Headers de segurança** via middleware customizado
 
-## 🔌 Testando as Rotas da API
+## 🔌 Testando a API
 
-### 1. Autenticação (Login)
-
-**Endpoint:** `POST /api/login/`
-
-**Exemplo usando curl:**
+### 1. Autenticação
 ```bash
-curl -X POST http://localhost:8000/api/login/ \
+curl -X POST http://localhost:8000/api/auth/login/ \
   -H "Content-Type: multipart/form-data" \
   -F "username=admin" \
   -F "password=admin"
 ```
 
-**Resposta esperada:**
-```json
-{
-  "access": "eyJhbGciOiJ...",
-  "refresh": "eyJhbGciOiJ...",
-  "role": "admin"
-}
-```
-
-### 2. Listar Pacientes (Require Autenticação)
-
-**Endpoint:** `GET /api/pacientes/`
-
-**Exemplo usando curl:**
+### 2. Listar Pacientes
 ```bash
 curl -X GET http://localhost:8000/api/pacientes/ \
-  -H "Authorization: Bearer SEU_TOKEN_AQUI"
+  -H "Authorization: Bearer SEU_TOKEN_JWT"
 ```
 
-### 3. Criar um Novo Paciente
-
-**Endpoint:** `POST /api/pacientes/`
-
-**Exemplo usando curl:**
+### 3. Upload de Exame DICOM
 ```bash
-curl -X POST http://localhost:8000/api/pacientes/ \
-  -H "Authorization: Bearer SEU_TOKEN_AQUI" \
-  -H "Content-Type: multipart/form-data" \
-  -F "full_name=João Silva" \
-  -F "birth_date=1980-05-15" \
-  -F "medical_info=Histórico de saúde do paciente"
+curl -X POST http://localhost:8000/api/fatias-tomografia/ \
+  -H "Authorization: Bearer SEU_TOKEN_JWT" \
+  -F "paciente_id=1" \
+  -F "arquivo=@exame.dcm" \
+  -F "descricao=Tomografia L3"
 ```
 
-## 🐛 Solução de Problemas Comuns
+## 🛠️ Gerenciamento de Usuários
 
-### Problema 1: Portas já em uso
+### Via Django Admin
+1. Acesse `http://localhost:8000/admin/`
+2. Login: `admin` / `admin`
+3. Em **"Profissional saudes"** → **"ADICIONAR"**
+
+### Campos obrigatórios:
+- **Username** (único)
+- **Senha** (mínimo 8 caracteres)
+- **Email** válido
+- **Nome completo**
+- **CPF** (apenas números, criptografado automaticamente)
+- **Papel** (Admin/Pesquisador/Profissional)
+
+## 🐛 Solução de Problemas
+
+### Portas Ocupadas
 ```bash
-# Se a porta 8000 ou 5434 estiver em uso, altere no docker-compose.yml
-# Edite o arquivo docker-compose.yml e modifique as portas:
+# Edite docker-compose.yml
 ports:
-  - "8001:8000"  # Mude a primeira porta (8001) para uma disponível
+  - "8001:8000"  # Use porta livre
 ```
 
-### Problema 2: Erro de permissão do Docker
+### Reconstruir Containers
 ```bash
-# Adicione seu usuário ao grupo docker
-sudo usermod -aG docker $USER
-
-# Ou execute com sudo
-sudo docker-compose up --build
-```
-
-### Problema 3: Reconstruir containers
-```bash
-# Pare os containers
 sudo docker-compose down
-
-# Reconstrua com cache limpo
 sudo docker-compose build --no-cache
-
-# Execute novamente
 sudo docker-compose up
 ```
 
-### Problema 4: Ver logs de erro
+### Ver Logs da Aplicação
 ```bash
-# Ver logs em tempo real
 sudo docker-compose logs -f web
-
-# Ver logs do banco de dados
-sudo docker-compose logs -f db
 ```
-
-## 📁 Estrutura do Projeto
-
-```
-Security_Tedas/
-├── api/                 # Aplicação principal Django
-├── security_api/        # Configurações do projeto
-├── docker-compose.yml   # Configuração do Docker
-├── Dockerfile          # Build da imagem Docker
-├── entrypoint.sh       # Script de inicialização
-├── requirements.txt    # Dependências Python
-└── README.md          # Este arquivo
-```
-
-## 🛡️ Funcionalidades de Segurança
-
-- **Autenticação JWT** com tokens de acesso e refresh
-- **Criptografia** de dados sensíveis (CPF, informações médicas)
-- **Controle de acesso** baseado em roles (RBAC)
-- **Validação de arquivos** por tipo MIME
-- **Registro de auditoria** de todas as ações
-- **Upload seguro** de arquivos DICOM com criptografia
 
 ## 🚪 Comandos Úteis
 
-### Executar em segundo plano
 ```bash
+# Executar em segundo plano
 sudo docker-compose up -d
-```
 
-### Parar os containers
-```bash
+# Parar containers
 sudo docker-compose down
-```
 
-### Executar comandos Django no container
-```bash
-# Criar superusuário adicional
+# Comandos Django no container
 sudo docker-compose exec web python manage.py createsuperuser
-
-# Ver migrações pendentes
 sudo docker-compose exec web python manage.py showmigrations
-
-# Coletar arquivos estáticos (se necessário)
-sudo docker-compose exec web python manage.py collectstatic
 ```
+
+## ⚙️ Configurações Técnicas
+
+- **Banco de Dados**: PostgreSQL com migrações automáticas
+- **Autenticação**: JWT + Basic Authentication
+- **Upload**: Máximo 50MB, tipos MIME validados
+- **Criptografia**: AES-256 para dados sensíveis
+- **Email**: SMTP configurado para recuperação de senha
+
+---
