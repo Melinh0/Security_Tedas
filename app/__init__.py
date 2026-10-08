@@ -1,4 +1,3 @@
-#__init__.py
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -17,7 +16,6 @@ def create_app():
     migrate.init_app(app, db)
     jwt.init_app(app)
 
-    # Configurações do Swagger
     app.config['SWAGGER'] = {
         'swagger': '2.0',
         'info': {
@@ -32,13 +30,11 @@ def create_app():
                 'description': 'Bearer token JWT'
             }
         },
-        'security': [{'jwt_token': []}]  # Exige JWT para todas as rotas
+        'security': [{'jwt_token': []}]
     }
 
-    # Inicializando o Swagger
-    swagger = Swagger(app)
+    Swagger(app)
 
-    # Importações adiadas para evitar importação circular
     from .auth import auth_bp
     from .views import view_bp
     from .controllers import create_default_admin
