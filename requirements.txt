@@ -1,4 +1,0 @@
-Flask
-PyJWT
-Werkzeug
-cryptography
