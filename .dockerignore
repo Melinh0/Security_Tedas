@@ -1,0 +1,13 @@
+.git
+.gitignore
+.env
+.env.example
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+db.sqlite3
+staticfiles/
+media/
+certs/
+*.md

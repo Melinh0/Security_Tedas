@@ -9,3 +9,14 @@ venv/
 
 # Ignora arquivo de atributos do Git
 .gitattributes
+
+# Segredos e ambiente
+.env
+
+# Banco local e arquivos gerados
+db.sqlite3
+staticfiles/
+media/
+
+# Certificados e chaves TLS
+certs/
